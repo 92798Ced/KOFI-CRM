@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Form Viewer</title>
+  <link rel="stylesheet" href="../styles.css" />
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+  <main id="formContainer" style="max-width:600px;margin:2rem auto;padding:1rem;"></main>
+
+  <script>
+    const SUPABASE_URL = "https://usopxhshfmmtnnvkzelj.supabase.co";
+    const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVzb3B4aHNoZm1tdG5udmt6ZWxqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjA4MTc2MzIsImV4cCI6MjA3NjM5MzYzMn0.3qG3t-QTc6UsRt74GXjL_pBVfibG42X5wGyWRLYu3NE";
+    const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+    const formId = new URLSearchParams(window.location.search).get("id");
+
+    async function loadForm() {
+      const { data, error } = await supabase.from("forms").select("title, schema").eq("id", formId).single();
+      if (error) return document.body.innerHTML = `<p style='color:red'>Form not found.</p>`;
+
+      document.title = data.title;
+      const container = document.getElementById("formContainer");
+      container.innerHTML = `<h2>${data.title}</h2>`;
+
+      const { fields = [] } = data.schema || {};
+      fields.forEach(f => {
+        let html = "";
+        switch (f.type) {
+          case "text":
+            html = `<p style="font-size:${f.styles.fontSize || 16}px;font-weight:${f.styles.fontWeight || 'normal'};">${f.content}</p>`;
+            break;
+          case "image":
+            html = `<img src="${f.src}" alt="" style="max-width:100%;margin-bottom:1rem;">`;
+            break;
+          case "button":
+            html = `<button style="background:${f.styles.background};color:${f.styles.color};padding:0.75rem 1rem;border:none;border-radius:8px;width:100%">${f.label}</button>`;
+            break;
+          default:
+            html = `
+              <label>${f.label || "Label"}${f.required ? " *" : ""}</label>
+              <input type="${f.type === 'dob' ? 'date' : (f.type === 'email' ? 'email' : 'text')}" placeholder="${f.example || ''}" style="width:100%;padding:.5rem;border-radius:.5rem;margin-bottom:1rem;border:1px solid #ddd;">`;
+        }
+        container.innerHTML += html;
+      });
+    }
+
+    loadForm();
+  </script>
+</body>
+</html>
