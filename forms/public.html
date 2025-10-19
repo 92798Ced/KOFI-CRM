@@ -70,45 +70,99 @@
 <body>
   <main id="formContainer"></main>
 
-  <script>
-    const SUPABASE_URL = "https://usopxhshfmmtnnvkzelj.supabase.co";
-    const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVzb3B4aHNoZm1tdG5udmt6ZWxqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjA4MTc2MzIsImV4cCI6MjA3NjM5MzYzMn0.3qG3t-QTc6UsRt74GXjL_pBVfibG42X5wGyWRLYu3NE";
-    const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+<script>
+  const SUPABASE_URL = "https://usopxhshfmmtnnvkzelj.supabase.co";
+  const SUPABASE_ANON_KEY =
+    "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVzb3B4aHNoZm1tdG5udmt6ZWxqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjA4MTc2MzIsImV4cCI6MjA3NjM5MzYzMn0.3qG3t-QTc6UsRt74GXjL_pBVfibG42X5wGyWRLYu3NE";
+  const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+  const formId = new URLSearchParams(window.location.search).get("id");
 
-    const formId = new URLSearchParams(window.location.search).get("id");
+  async function loadForm() {
+    const { data, error } = await supabase
+      .from("forms")
+      .select("title, schema")
+      .eq("id", formId)
+      .single();
 
-    async function loadForm() {
-      const { data, error } = await supabase.from("forms").select("title, schema").eq("id", formId).single();
-      if (error) return document.body.innerHTML = `<p style='color:red'>Form not found.</p>`;
-
-      document.title = data.title;
-      const container = document.getElementById("formContainer");
-      container.innerHTML = `<h2>${data.title}</h2>`;
-
-      const { fields = [] } = data.schema || {};
-      fields.forEach(f => {
-        let html = "";
-        switch (f.type) {
-          case "text":
-            html = `<p style="font-size:${f.styles.fontSize || 16}px;font-weight:${f.styles.fontWeight || 'normal'};">${f.content}</p>`;
-            break;
-          case "image":
-            html = `<img src="${f.src}" alt="">`;
-            break;
-          case "button":
-            html = `<button style="background:${f.styles.background || '#111'};color:${f.styles.color || '#fff'}">${f.label}</button>`;
-            break;
-          default:
-            html = `
-              <label>${f.label || "Label"}${f.required ? " *" : ""}</label>
-              <input type="${f.type === 'dob' ? 'date' : (f.type === 'email' ? 'email' : 'text')}" placeholder="${f.example || ''}">
-            `;
-        }
-        container.innerHTML += html;
-      });
+    if (error) {
+      document.body.innerHTML = `<p style='color:red'>Form not found.</p>`;
+      return;
     }
 
-    loadForm();
-  </script>
+    document.title = data.title;
+    const container = document.getElementById("formContainer");
+    container.innerHTML = `<h2>${data.title}</h2>`;
+
+    const { fields = [] } = data.schema || {};
+    const form = document.createElement("form");
+    form.id = "publicForm";
+
+    fields.forEach((f) => {
+      let html = "";
+      switch (f.type) {
+        case "text":
+          html = `<p style="font-size:${f.styles.fontSize || 16}px;font-weight:${f.styles.fontWeight || "normal"};">${f.content}</p>`;
+          break;
+        case "image":
+          html = `<img src="${f.src}" alt="">`;
+          break;
+        case "button":
+          html = `<button type="submit" style="background:${f.styles.background || "#111"};color:${f.styles.color || "#fff"}">${f.label}</button>`;
+          break;
+        default:
+          html = `
+            <label>${f.label || "Label"}${f.required ? " *" : ""}</label>
+            <input
+              name="${f.label?.toLowerCase().replace(/\s+/g, "_") || "field"}"
+              type="${
+                f.type === "email"
+                  ? "email"
+                  : f.type === "phone"
+                  ? "tel"
+                  : "text"
+              }"
+              placeholder="${f.example || ""}"
+              ${f.required ? "required" : ""}
+            >
+          `;
+      }
+      form.innerHTML += html;
+    });
+
+    container.appendChild(form);
+
+    form.addEventListener("submit", async (e) => {
+      e.preventDefault();
+
+      // Extract fields that match your public.contacts schema
+      const formData = Object.fromEntries(new FormData(form).entries());
+      const contact = {
+        name:
+          formData.full_name ||
+          formData.fullname ||
+          `${formData.first_name || ""} ${formData.last_name || ""}`.trim() ||
+          formData.name ||
+          "Unnamed",
+        email: formData.email || "",
+        phone: formData.phone || ""
+      };
+
+      // Insert into public.contacts
+      const { error: insertError } = await supabase
+        .from("contacts")
+        .insert([contact]);
+
+      if (insertError) {
+        alert("❌ Failed to submit: " + insertError.message);
+      } else {
+        alert("✅ Form submitted succesfully!");
+        form.reset();
+      }
+    });
+  }
+
+  loadForm();
+</script>
+
 </body>
 </html>
