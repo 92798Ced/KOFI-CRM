@@ -97,14 +97,11 @@
     const form = document.createElement("form");
     form.id = "publicForm";
 
-    // build inputs
     fields.forEach((f) => {
       let html = "";
       switch (f.type) {
         case "text":
-          html = `<p style="font-size:${f.styles.fontSize || 16}px;font-weight:${
-            f.styles.fontWeight || "normal"
-          };">${f.content}</p>`;
+          html = `<p style="font-size:${f.styles.fontSize || 16}px;font-weight:${f.styles.fontWeight || "normal"};">${f.content}</p>`;
           break;
         case "image":
           html = `<img src="${f.src}" alt="">`;
@@ -138,51 +135,51 @@
 
     container.appendChild(form);
 
-    // handle submit
+    // Handle submit
     form.addEventListener("submit", async (e) => {
       e.preventDefault();
       try {
-        const rawEntries = Object.fromEntries(new FormData(form).entries());
-        const lowerKeys = Object.keys(rawEntries).reduce((acc, key) => {
-          acc[key.toLowerCase().trim()] = rawEntries[key].trim();
-          return acc;
-        }, {});
+        const raw = Object.fromEntries(new FormData(form).entries());
 
-        // merge first + last name
+        // Normalize keys
+        const normalized = {};
+        for (const [k, v] of Object.entries(raw)) {
+          const key = k.toLowerCase().replace(/[^a-z0-9]/g, ""); // strip spaces/punctuation
+          normalized[key] = v.trim();
+        }
+
+        // Extract known fields
         const firstName =
-          lowerKeys["first name"] ||
-          lowerKeys["firstname"] ||
-          lowerKeys["first"];
+          normalized.firstname || normalized.firstnamefield || "";
         const lastName =
-          lowerKeys["last name"] ||
-          lowerKeys["lastname"] ||
-          lowerKeys["last"];
-        const fullName =
-          lowerKeys["name"] ||
-          `${firstName || ""} ${lastName || ""}`.trim() ||
+          normalized.lastname || normalized.lastnamefield || "";
+        const name =
+          normalized.fullname ||
+          normalized.name ||
+          `${firstName} ${lastName}`.trim() ||
           "Unnamed";
 
         const email =
-          lowerKeys["email"] ||
-          lowerKeys["e-mail"] ||
-          lowerKeys["email address"] ||
+          normalized.email ||
+          normalized.emailaddress ||
+          normalized.emailfield ||
           "";
         const phone =
-          lowerKeys["phone"] ||
-          lowerKeys["phone number"] ||
-          lowerKeys["mobile"] ||
+          normalized.phone ||
+          normalized.phonenumber ||
+          normalized.mobile ||
           "";
 
-        const contact = {
-          name: fullName,
-          email,
-          phone
-        };
-
-        if (!email && !phone && !fullName) {
-          alert("⚠️ Please fill out at least one contact field.");
+        if (!name && !email && !phone) {
+          alert("⚠️ Please fill in at least one field before submitting.");
           return;
         }
+
+        const contact = {
+          name,
+          email,
+          phone,
+        };
 
         const { error: insertError } = await supabase
           .from("contacts")
@@ -190,17 +187,18 @@
 
         if (insertError) throw insertError;
 
-        alert("✅ Form Submitted!");
+        alert("✅ Form Submitted, thank you!");
         form.reset();
       } catch (err) {
-        console.error("Submit error:", err);
-        alert("❌ Something went wrong: " + err.message);
+        console.error("❌ Submission failed:", err);
+        alert("❌ Error: " + err.message);
       }
     });
   }
 
   loadForm();
 </script>
+
 
 
 </body>
