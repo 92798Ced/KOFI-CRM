@@ -149,7 +149,7 @@ document.addEventListener("DOMContentLoaded", async () => {
           e.stopPropagation();
           if (confirm("Delete form?")) supabase.from("forms").delete().eq("id", form.id).then(loadFolders);
         };
-        card.onclick = () => window.open(`/forms/editor.html?id=${form.id}`, "_blank");
+        card.onclick = () => window.open(`/forms/builder.html?id=${form.id}`, "_blank");
         list.appendChild(card);
       });
 
@@ -180,7 +180,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         const card = document.createElement("div");
         card.className = "form-card";
         card.innerHTML = `<div class="card-main"><h4>${form.title || form.name}</h4></div>`;
-        card.onclick = () => window.open(`/forms/editor.html?id=${form.id}`, "_blank");
+        card.onclick = () => window.open(`/forms/builder.html?id=${form.id}`, "_blank");
         list.appendChild(card);
       });
       div.appendChild(list);
@@ -323,7 +323,7 @@ formForm.onsubmit = async (e) => {
   formModal.classList.add("hidden");
   loadFolders();
 
-  if (data?.id) window.open(`/forms/editor.html?id=${data.id}`, "_blank");
+  if (data?.id) window.open(`/forms/builder.html?id=${data.id}`, "_blank");
 };
 });
 </script>
