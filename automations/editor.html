@@ -93,9 +93,6 @@
     .toast.show{opacity:1;transform:translateY(0)}
   </style>
 </head>
-if (!localStorage.getItem("OPENAI_API_KEY")) {
-  console.warn("⚠️ No OpenAI API key found. Run this in console: localStorage.setItem('OPENAI_API_KEY','sk-yourkey')");
-}
 <body>
   <!-- Top bar -->
   <div class="topbar">
@@ -667,22 +664,29 @@ if (!localStorage.getItem("OPENAI_API_KEY")) {
       pushHistory();
 
       // 2) Supabase push
-      const triggerJSON = workflow.trigger ? [workflow.trigger] : [];
-      const actionsJSON = workflow.actions.map(a=>({ id:a.id, key:a.key, label:a.label, icon:a.icon, config:a.config||{} }));
-      const { error } = await supabase.from("automations").update({
-        trigger: JSON.stringify(triggerJSON),
-        actions: JSON.stringify(actionsJSON),
-        updated_at: new Date().toISOString()
-      }).eq("id", automationId);
+const triggerJSON = workflow.trigger ? [workflow.trigger] : [];
+const actionsJSON = workflow.actions.map(a => ({
+  id: a.id,
+  key: a.key,
+  label: a.label,
+  icon: a.icon,
+  config: a.config || {}
+}));
 
-      if(error){
-        alert("Error saving: "+error.message);
-      }else{
-        showToast();
-        lastSavedEl.textContent = "Last saved: " + new Date().toLocaleTimeString();
-      }
-      // Do NOT auto-open history (manual per your preference)
-    });
+// Save directly as JSON (Supabase will store it as jsonb)
+const { error } = await supabase.from("automations").update({
+  trigger: triggerJSON,
+  actions: actionsJSON,
+  updated_at: new Date().toISOString()
+}).eq("id", automationId);
+
+if (error) {
+  alert("Error saving: " + error.message);
+} else {
+  showToast();
+  lastSavedEl.textContent = "Last saved: " + new Date().toLocaleTimeString();
+}
+
 
     /* ---------- History Drawer (manual) ---------- */
     const historyDrawer = document.getElementById("historyDrawer");
