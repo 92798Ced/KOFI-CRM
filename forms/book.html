@@ -211,7 +211,10 @@
       const times = ["08:00","08:30","09:00","09:30","10:00","10:30","11:00","11:30","12:00","13:00","13:30","14:00","14:30","15:00","15:30","16:00"];
       let booked = [];
       if (selectedDate){
-        const { data } = await supabase.from("crm_events").select("time,date").eq("date", selectedDate);
+        const { data } = await supabase.from("crm_bookings").select("time,date")
+  .eq("created_from", id)
+  .eq("date", selectedDate);
+
         booked = (data||[]).map(e => (e.time||"").trim());
       }
       times.forEach(t => {
@@ -232,7 +235,7 @@ async function bookSlot(time) {
   const confirmMsg = `Confirm booking on ${selectedDate} at ${time}?`;
   if (!confirm(confirmMsg)) return;
 
-  const { error } = await supabase.from("crm_events").insert([
+  const { error } = await supabase.from("crm_bookings").insert([
     {
       id: crypto.randomUUID(),
       title: eventData.title || "Appointment",
