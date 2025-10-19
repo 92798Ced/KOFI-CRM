@@ -251,6 +251,12 @@ async function bookSlot(time) {
   showThankYou();
 }
 
+  ]);
+
+  if (error) return alert("Booking failed: " + error.message);
+  showThankYou();
+}
+
 
     function showThankYou(){
       document.getElementById("calendarContainer").style.display = "none";
