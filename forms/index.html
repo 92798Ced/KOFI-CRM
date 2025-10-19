@@ -290,20 +290,42 @@ const { data, error } = await supabase
     loadFolders();
   };
 
-  formForm.onsubmit = async (e) => {
-    e.preventDefault();
-    const name = document.getElementById("form_name").value.trim();
-    const folder_id = document.getElementById("form_folder").value || null;
-    const status = document.getElementById("form_status").value;
-    if (!name) return alert("Please enter a form name");
-    const { data, error } = await supabase.from("forms").insert([{ title: name, folder_id, status }]).select().single();
-    if (error) return alert(error.message);
-    formForm.reset();
-    formModal.classList.add("hidden");
-    loadFolders();
-    if (data?.id) window.open(`/forms/editor.html?id=${data.id}`, "_blank");
-  };
-});
+ formForm.onsubmit = async (e) => {
+  e.preventDefault();
+
+  const name = document.getElementById("form_name").value.trim();
+  const folder_id_raw = document.getElementById("form_folder").value;
+  const folder_id = folder_id_raw ? folder_id_raw : null;
+  const status = document.getElementById("form_status").value.toLowerCase();
+
+  if (!name) return alert("Please enter a form name");
+
+  const { data, error } = await supabase
+    .from("forms")
+    .insert([
+      {
+        title: name,
+        folder_id,
+        status,
+        schema: { fields: [], fontSettings: { fontFamily: "Poppins", fontSize: 16, lineHeight: 1.5 } },
+      },
+    ])
+    .select()
+    .single();
+
+  if (error) {
+    console.error(error);
+    alert("Error creating form: " + error.message);
+    return;
+  }
+
+  formForm.reset();
+  formModal.classList.add("hidden");
+  loadFolders();
+
+  if (data?.id) window.open(`/forms/editor.html?id=${data.id}`, "_blank");
+};
+
 </script>
 
 <style>
