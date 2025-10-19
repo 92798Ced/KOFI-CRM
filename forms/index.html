@@ -290,7 +290,7 @@ const { data, error } = await supabase
     loadFolders();
   };
 
- formForm.onsubmit = async (e) => {
+formForm.onsubmit = async (e) => {
   e.preventDefault();
 
   const name = document.getElementById("form_name").value.trim();
@@ -325,7 +325,7 @@ const { data, error } = await supabase
 
   if (data?.id) window.open(`/forms/editor.html?id=${data.id}`, "_blank");
 };
-
+});
 </script>
 
 <style>
