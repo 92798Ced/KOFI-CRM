@@ -161,7 +161,12 @@
                   <span class="badge">${auto.status || "Active"}</span>
                 </div>`;
               list.appendChild(card);
-            });
+			  
+			      // 🔧 FIX: make cards clickable
+    card.addEventListener("click", () => {
+      window.open(`/automations/editor.html?id=${auto.id}`, "_blank");
+    });
+  });
 
           div.querySelector(".toggleFolder").addEventListener("click", (e) => {
             list.classList.toggle("hidden");
@@ -285,6 +290,8 @@
       transform: scale(1.02);
       transition: 0.1s;
     }
+	.automation-card { cursor: pointer; }
+.automation-card:hover { background: #f9fafb; }
   </style>
 </body>
 </html>
