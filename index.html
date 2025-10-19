@@ -1,0 +1,485 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Loom CRM Dashboard</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="styles.css" />
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <!-- Reviews + Chart.js -->
+  <script src="./reviews/reviewsData.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+
+<body>
+  <!-- Sidebar / Hamburger -->
+  <nav id="sidebar" class="sidebar hidden"></nav>
+  <div class="sidebar-overlay" id="sidebarOverlay"></div>
+  <div class="hamburger" id="hamburger"><span></span><span></span><span></span></div>
+
+  <header class="app-header">
+    <div class="brand">
+      <span class="brand-mark">◎</span>
+      <div>
+        <h1>Loom CRM</h1>
+        <p>Streamlined client management & analytics</p>
+      </div>
+    </div>
+
+    <div class="header-actions">
+      <div id="live-now" class="live-now">
+        <span id="live-time" class="live-time"></span>
+        <span id="live-city" class="live-city">Manila</span>
+        <span id="live-weather" class="live-weather"></span>
+        <div id="userWelcome" class="user-welcome">Welcome, —</div>
+        <div class="logout-wrap"><button id="logoutBtn" class="secondary">Logout</button></div>
+      </div>
+    </div>
+  </header>
+
+  <main class="app">
+    <section class="dashboard">
+      <div class="dashboard-heading">
+        <div>
+          <h2>Pipeline Pulse</h2>
+          <p class="muted">All metrics shown in Philippine Pesos (₱).</p>
+        </div>
+      </div>
+
+      <!-- Top metric cards -->
+      <div class="dashboard-grid">
+        <article class="card metric">
+          <h3>New Leads</h3>
+          <div class="metric-value" id="new-leads-count">0</div>
+          <p class="muted">Captured in last 7 days</p>
+        </article>
+
+        <article class="card">
+          <div class="card-header"><h3>Lead Sources</h3><span id="lead-source-total" class="badge"></span></div>
+          <ul id="lead-source-list" class="source-list"></ul>
+        </article>
+
+        <!-- Reviews Card with Chart -->
+        <article class="card">
+          <div class="card-header">
+            <h3>Reviews</h3>
+            <span id="average-rating" class="badge">0 ★</span>
+          </div>
+          <canvas id="sentimentChart" width="160" height="160"></canvas>
+          <div id="reviews-grid" class="reviews-grid"></div>
+        </article>
+
+        <article class="card metric">
+          <h3>Conversion Rate</h3>
+          <div class="metric-value" id="conversion-rate">0%</div>
+          <p class="muted">Closed won vs total leads</p>
+        </article>
+      </div>
+
+      <!-- Calendar + Upcoming Events -->
+      <div class="calendar-weather card calendar-row">
+        <div class="calendar-block">
+          <div class="card-header calendar-nav">
+            <button id="prevMonth" class="nav-btn">←</button>
+            <h3 id="calendarTitle">Calendar</h3>
+            <button id="nextMonth" class="nav-btn">→</button>
+          </div>
+          <div id="calendar" class="calendar">
+            <div class="calendar-grid" id="calendarGrid"></div>
+          </div>
+          <button id="addEventBtn" class="primary full">+ Add Event</button>
+        </div>
+
+        <div class="upcoming-block">
+          <div class="card-header"><h3>Upcoming Events</h3></div>
+          <ul id="upcomingList" class="upcoming-list"></ul>
+          <button id="viewCalendarBtn" class="secondary full">View Calendar</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- Contacts -->
+    <section class="card contact-card">
+      <div class="card-header">
+        <h3>Contacts</h3>
+        <span id="contact-count" class="badge">0</span>
+      </div>
+      <table class="contact-table" id="contactTable">
+        <thead>
+          <tr><th>Name</th><th>Email</th><th>Phone</th><th>Last Activity</th></tr>
+        </thead>
+        <tbody id="contactTableBody"></tbody>
+      </table>
+    </section>
+
+    <!-- Insights -->
+    <section class="card">
+      <div class="card-header">
+        <h3>CRM Insights</h3>
+        <span class="badge" id="insightsTimestamp">—</span>
+      </div>
+      <div class="insights-grid">
+        <div class="insight"><h4>Total Contacts</h4><div class="num" id="ins_contacts">0</div></div>
+        <div class="insight"><h4>Active Deals</h4><div class="num" id="ins_active">0</div></div>
+        <div class="insight"><h4>Closed Won</h4><div class="num" id="ins_won">0</div></div>
+        <div class="insight"><h4>Closed Lost</h4><div class="num" id="ins_lost">0</div></div>
+      </div>
+      <div class="avg-rating-wrap"><span class="badge" id="avgRatingPill">Avg Rating: —</span></div>
+    </section>
+  </main>
+
+  <footer class="app-footer"><p>© 2025 Loom & Prints – All amounts in ₱</p></footer>
+
+  <!-- Sidebar script -->
+  <script src="/components/sidebar.js"></script>
+
+  <!-- Modals & Toasts -->
+  <div id="eventModal" class="modal hidden"></div>
+  <div id="addEventModal" class="modal hidden"></div>
+  <div id="toasts" class="toasts"></div>
+
+  <script>
+    /* ---------- Setup ---------- */
+    const SUPABASE_URL = "https://usopxhshfmmtnnvkzelj.supabase.co";
+    const SUPABASE_ANON_KEY =
+      "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVzb3B4aHNoZm1tdG5udmt6ZWxqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjA4MTc2MzIsImV4cCI6MjA3NjM5MzYzMn0.3qG3t-QTc6UsRt74GXjL_pBVfibG42X5wGyWRLYu3NE";
+    const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    const $ = (s) => document.querySelector(s);
+
+    /* ---------- Auth ---------- */
+    async function ensureSession() {
+      const stored = localStorage.getItem("loom_user");
+      if (!stored) return (window.location.href = "login.html");
+      let user; try { user = JSON.parse(stored); } catch { localStorage.removeItem("loom_user"); window.location.href = "login.html"; return; }
+      const { data, error } = await supabase.from("crm_users").select("full_name").eq("username", user.username).maybeSingle();
+      if (error || !data) return (window.location.href = "login.html");
+      $("#userWelcome").textContent = `Welcome, ${data.full_name}`;
+    }
+    $("#logoutBtn").addEventListener("click", () => { localStorage.removeItem("loom_user"); window.location.href = "login.html"; });
+
+    /* ---------- Sidebar ---------- */
+    document.addEventListener("DOMContentLoaded", () => {
+      if (window.loadSidebar) loadSidebar("dashboard");
+      const hb = $("#hamburger"), sb = $("#sidebar"), ov = $("#sidebarOverlay");
+      hb.onclick = () => { sb.classList.toggle("show"); ov.classList.toggle("show"); };
+      ov.onclick = () => { sb.classList.remove("show"); ov.classList.remove("show"); };
+    });
+
+    /* ---------- Clock ---------- */
+    setInterval(() => { $("#live-time").textContent = new Date().toLocaleString([], { hour: "2-digit", minute: "2-digit" }); }, 1000);
+
+    /* ---------- Toasts ---------- */
+    function showToast(msg, type="success") {
+      const wrap = $("#toasts");
+      const el = document.createElement("div");
+      el.className = `toast ${type}`;
+      el.textContent = msg;
+      wrap.appendChild(el);
+      setTimeout(() => el.classList.add("show"), 10);
+      setTimeout(() => el.classList.remove("show"), 3000);
+      setTimeout(() => el.remove(), 3600);
+    }
+
+    /* ---------- Helpers ---------- */
+    function animateCount(el, to, dur = 800) {
+      const start = 0, diff = to - start, t0 = performance.now();
+      const tick = (t) => {
+        const p = Math.min(1, (t - t0) / dur);
+        el.textContent = Math.round(diff * p).toLocaleString();
+        if (p < 1) requestAnimationFrame(tick);
+      }; requestAnimationFrame(tick);
+    }
+    function formatDT(dateStr, timeStr) {
+      const d = new Date(dateStr + (timeStr ? "T" + timeStr : "T00:00"));
+      return d.toLocaleString([], { month:"short", day:"2-digit", hour:"2-digit", minute:"2-digit" });
+    }
+
+    /* ---------- Contacts ---------- */
+    async function loadContacts() {
+      const { data, error, count } = await supabase
+        .from("contacts")
+        .select("id, name, email, phone, last_activity", { count: "exact" })
+        .order("last_activity", { ascending: false });
+
+      const tbody = $("#contactTableBody");
+      if (error) { tbody.innerHTML = `<tr><td colspan="4" class="muted">Could not load contacts.</td></tr>`; return; }
+
+      $("#contact-count").textContent = count || 0;
+      tbody.innerHTML = (data || []).map(r => `
+        <tr>
+          <td>${r.name || ""}</td>
+          <td>${r.email || ""}</td>
+          <td>${r.phone || ""}</td>
+          <td>${r.last_activity ? new Date(r.last_activity).toLocaleString() : "—"}</td>
+        </tr>`).join("");
+    }
+
+    /* ---------- Insights ---------- */
+    async function loadInsights() {
+      const [contacts, open, won, lost] = await Promise.all([
+        supabase.from("contacts").select("*", { count: "exact", head: true }),
+        supabase.from("opportunities").select("*", { count: "exact", head: true }).eq("status", "Open"),
+        supabase.from("opportunities").select("*", { count: "exact", head: true }).eq("status", "Won"),
+        supabase.from("opportunities").select("*", { count: "exact", head: true }).eq("status", "Lost")
+      ]);
+      animateCount($("#ins_contacts"), contacts.count || 0);
+      animateCount($("#ins_active"), open.count || 0);
+      animateCount($("#ins_won"), won.count || 0);
+      animateCount($("#ins_lost"), lost.count || 0);
+      $("#insightsTimestamp").textContent = `Updated ${new Date().toLocaleTimeString([], { hour:'2-digit', minute:'2-digit' })}`;
+    }
+
+    /* ---------- Reviews + Chart ---------- */
+    function loadReviewsBadge() {
+      const arr = (window.demoReviews || []).filter(r => typeof r.rating === "number");
+      const avg = arr.length ? (arr.reduce((a,b)=>a+b.rating,0) / arr.length) : 0;
+      $("#average-rating").textContent = `${avg.toFixed(1)} ★`;
+      $("#avgRatingPill").textContent = `Avg Rating: ${avg.toFixed(1)} ★ (${arr.length})`;
+      renderSentimentChart();
+    }
+    function renderSentimentChart() {
+      const ctx = document.getElementById("sentimentChart");
+      if (!ctx) return;
+
+      const reviews = window.demoReviews || [];
+      const positive = reviews.filter(r => r.sentiment === "positive").length;
+      const negative = reviews.filter(r => r.sentiment === "negative").length;
+      const neutral = reviews.length - positive - negative;
+
+      if (window.sentimentChart && typeof window.sentimentChart.destroy === "function") {
+        window.sentimentChart.destroy();
+      }
+
+      window.sentimentChart = new Chart(ctx, {
+        type: "doughnut",
+        data: {
+          labels: ["Positive", "Negative", "Neutral"],
+          datasets: [{
+            data: [positive, negative, neutral],
+            backgroundColor: ["#4ADE80", "#F87171", "#9CA3AF"],
+            borderWidth: 0
+          }]
+        },
+        options: {
+          cutout: "65%",
+          plugins: {
+            legend: { display: true, labels: { color: "#cbd5e1", font: { size: 12 } } }
+          }
+        }
+      });
+    }
+
+    /* ---------- Lead sources + conversion ---------- */
+    async function loadLeadBits() {
+      const { data } = await supabase.from("opportunities").select("source, status");
+      const counts = new Map(); let won = 0, total = 0;
+      (data || []).forEach(r => {
+        const s = r.source && r.source !== "EMPTY" ? r.source : "Unknown";
+        counts.set(s, (counts.get(s)||0) + 1);
+        total++; if (r.status === "Won") won++;
+      });
+      const list = $("#lead-source-list"); list.innerHTML = "";
+      Array.from(counts.entries()).sort((a,b)=>b[1]-a[1]).slice(0,5).forEach(([src, n])=>{
+        const li = document.createElement("li"); li.textContent = `${src} — ${n}`; list.appendChild(li);
+      });
+      $("#lead-source-total").textContent = `${total || 0} total`;
+      $("#conversion-rate").textContent = `${total ? Math.round((won/total)*100) : 0}%`;
+      $("#new-leads-count").textContent = total;
+    }
+
+    /* ---------- Calendar ---------- */
+    let current = new Date();
+    const monthNames = ["January","February","March","April","May","June","July","August","September","October","November","December"];
+    $("#prevMonth").onclick = () => { current.setMonth(current.getMonth()-1); renderCalendar(); };
+    $("#nextMonth").onclick = () => { current.setMonth(current.getMonth()+1); renderCalendar(); };
+    $("#viewCalendarBtn").onclick = () => document.querySelector(".calendar-block").scrollIntoView({ behavior:"smooth", block:"start" });
+
+    async function renderCalendar() {
+      const y = current.getFullYear(), m = current.getMonth();
+      $("#calendarTitle").textContent = `${monthNames[m]} ${y}`;
+      const firstDay = new Date(y, m, 1).getDay();
+      const daysInMonth = new Date(y, m+1, 0).getDate();
+
+      const start = `${y}-${String(m+1).padStart(2,"0")}-01`;
+      const end = `${y}-${String(m+1).padStart(2,"0")}-${String(daysInMonth).padStart(2,"0")}`;
+      const { data: events } = await supabase
+        .from("crm_events")
+        .select("id, title, date")
+        .gte("date", start).lte("date", end);
+
+      const datesWithEvents = new Set((events || []).map(e => e.date));
+      const grid = $("#calendarGrid"); grid.innerHTML = "";
+
+      // Week header
+      ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"].forEach(d => {
+        const h = document.createElement("div"); h.className = "day-name"; h.textContent = d; grid.appendChild(h);
+      });
+
+      for (let i=0; i<firstDay; i++) grid.appendChild(document.createElement("div"));
+
+      for (let d=1; d<=daysInMonth; d++) {
+        const cell = document.createElement("div");
+        cell.className = "day";
+        const dateStr = `${y}-${String(m+1).padStart(2,"0")}-${String(d).padStart(2,"0")}`;
+        cell.innerHTML = `<div class="day-num">${d}</div>`;
+        if (datesWithEvents.has(dateStr)) {
+          const dot = document.createElement("div"); dot.className = "event-dot"; cell.appendChild(dot);
+        }
+        cell.onclick = () => openEventModal(dateStr);
+        grid.appendChild(cell);
+      }
+    }
+
+    /* ---------- Upcoming (right card) ---------- */
+    async function loadUpcoming() {
+      const today = new Date(); const todayStr = today.toISOString().slice(0,10);
+      const { data } = await supabase
+        .from("crm_events")
+        .select("id, title, date, time, contacts:visitor(name)")
+        .gte("date", todayStr)
+        .order("date", { ascending: true })
+        .order("time", { ascending: true })
+        .limit(3);
+
+      const list = $("#upcomingList");
+      if (!data || !data.length) {
+        list.innerHTML = `<li class="muted">No upcoming events.</li>`;
+        return;
+      }
+      list.innerHTML = data.map(ev => `
+        <li class="up-item">
+          <div class="up-title">${ev.title}</div>
+          <div class="up-meta">${ev.contacts?.name || "Unknown"} • ${formatDT(ev.date, ev.time)}</div>
+        </li>
+      `).join("");
+    }
+
+    /* ---------- Events: CRUD + Modals ---------- */
+    async function openEventModal(date) {
+      const modal = $("#eventModal");
+      const { data: events } = await supabase
+        .from("crm_events")
+        .select("id, title, description, time, visitor, date, contacts:visitor(name)")
+        .eq("date", date)
+        .order("time", { ascending:true });
+
+      modal.innerHTML = `
+        <div class="modal-content">
+          <div class="modal-header">
+            <h3>Events for ${date}</h3>
+            <button class="close-modal">×</button>
+          </div>
+          <div class="modal-body">
+            ${
+              events && events.length
+                ? events.map(ev => `
+                    <div class="event-card">
+                      <strong>${ev.title}</strong><br/>
+                      <span class="muted">${ev.contacts?.name || "Unknown"}</span><br/>
+                      <small>${ev.time || ""}</small>
+                      <div class="event-actions">
+                        <button class="edit" onclick="editEvent('${ev.id}')">✏️</button>
+                        <button class="delete" onclick="deleteEvent('${ev.id}')">🗑️</button>
+                      </div>
+                    </div>
+                  `).join("")
+                : "<p class='muted'>No events for this day.</p>"
+            }
+          </div>
+        </div>`;
+      modal.classList.remove("hidden");
+      modal.querySelector(".close-modal").onclick = () => modal.classList.add("hidden");
+    }
+
+    async function deleteEvent(id) {
+      const { error } = await supabase.from("crm_events").delete().eq("id", id);
+      if (error) { showToast("Delete failed.", "error"); return; }
+      showToast("Event deleted.");
+      $("#eventModal").classList.add("hidden");
+      await renderCalendar();
+      await loadUpcoming();
+    }
+
+    async function editEvent(id) {
+      const { data } = await supabase.from("crm_events").select("*").eq("id", id).maybeSingle();
+      openAddEventModal(data);
+    }
+
+    $("#addEventBtn").onclick = () => openAddEventModal();
+
+    async function openAddEventModal(event = null) {
+      const modal = $("#addEventModal");
+      const { data: contacts } = await supabase.from("contacts").select("id, name").order("name", { ascending:true });
+
+      modal.innerHTML = `
+        <div class="modal-content">
+          <div class="modal-header">
+            <h3>${event ? "Edit Event" : "Add Event"}</h3>
+            <button class="close-modal">×</button>
+          </div>
+          <div class="modal-body">
+            <form id="eventForm">
+              <label>Contact</label>
+              <select name="visitor" required>
+                <option value="">Select contact</option>
+                ${ (contacts||[]).map(c => `<option value="${c.id}" ${event && c.id === event.visitor ? "selected" : ""}>${c.name}</option>`).join("") }
+              </select>
+
+              <label>Title</label>
+              <input name="title" value="${event?.title || ""}" required>
+
+              <label>Description</label>
+              <textarea name="description">${event?.description || ""}</textarea>
+
+              <label>Date</label>
+              <input type="date" name="date" value="${event?.date || ""}" required>
+
+              <label>Time</label>
+              <input type="time" name="time" value="${event?.time || ""}">
+
+              <button type="submit" class="primary">${event ? "Update" : "Add"} Event</button>
+            </form>
+          </div>
+        </div>`;
+      modal.classList.remove("hidden");
+      modal.querySelector(".close-modal").onclick = () => modal.classList.add("hidden");
+
+      modal.querySelector("#eventForm").onsubmit = async (e) => {
+        e.preventDefault();
+        const fd = new FormData(e.target);
+        const payload = Object.fromEntries(fd.entries());
+        let res;
+        if (event) res = await supabase.from("crm_events").update(payload).eq("id", event.id);
+        else res = await supabase.from("crm_events").insert(payload);
+        if (res.error) { showToast("Save failed.", "error"); return; }
+        showToast(event ? "Event updated." : "Event added.");
+        modal.classList.add("hidden");
+        await renderCalendar();
+        await loadUpcoming();
+      };
+    }
+
+    /* ---------- Init ---------- */
+    document.addEventListener("DOMContentLoaded", async () => {
+      await ensureSession();
+
+      // We no longer fetch live weather; keep city label only.
+      $("#live-weather").textContent = "";
+
+      loadReviewsBadge();
+      await loadContacts();
+      await loadInsights();
+      await loadLeadBits();
+      await renderCalendar();
+      await loadUpcoming();
+
+      setInterval(loadInsights, 60000);
+    });
+
+    // expose for inline onclick
+    window.deleteEvent = deleteEvent;
+    window.editEvent = editEvent;
+  </script>
+</body>
+</html>

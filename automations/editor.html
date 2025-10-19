@@ -1,0 +1,717 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Loom CRM — Workflow Editor</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <style>
+    :root{
+      --primary:#4f46e5;
+      --surface:#fff;
+      --border:#e5e7eb;
+      --muted:#6b7280;
+      --success:#16a34a;
+    }
+    *{box-sizing:border-box}
+    body{
+      margin:0;font-family:Inter,system-ui,Segoe UI,Arial,sans-serif;
+      background:#f8fafc;overflow:hidden;user-select:none;
+    }
+
+    /* Topbar */
+    .topbar{display:flex;align-items:center;justify-content:space-between;
+      background:#fff;border-bottom:1px solid var(--border);padding:.75rem 1rem;position:sticky;top:0;z-index:20}
+    .topbar h1{margin:0;font-size:1rem;color:#111827;font-weight:700}
+    .topbar-right{display:flex;gap:.75rem;align-items:center}
+    .btn{background:var(--primary);color:#fff;border:none;border-radius:8px;padding:.55rem .9rem;font-weight:600;cursor:pointer}
+    .btn.secondary{background:#f3f4f6;color:#111827}
+    .btn.danger{background:#ef4444}
+    .muted{color:var(--muted);font-size:.86rem}
+    .last-saved{min-width:160px;text-align:right}
+
+    .toggle{display:flex;align-items:center;gap:.4rem;font-weight:600}
+    .toggle input{appearance:none;width:42px;height:22px;background:#d1d5db;border-radius:999px;position:relative;cursor:pointer}
+    .toggle input:checked{background:var(--primary)}
+    .toggle input:before{content:"";position:absolute;top:3px;left:3px;width:16px;height:16px;border-radius:50%;background:#fff;transition:transform .2s}
+    .toggle input:checked:before{transform:translateX(20px)}
+
+    /* Workspace / Canvas */
+    .workspace{position:relative;width:100vw;height:calc(100vh - 60px);
+      background-image:radial-gradient(circle, #e5e7eb 1px, transparent 1px);background-size:30px 30px;
+      overflow:hidden;cursor:grab}
+    .canvas{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%) scale(1);
+      transform-origin:center center;transition:transform .08s ease;
+      display:flex;flex-direction:column;align-items:center;gap:14px;min-width:360px}
+
+    .line{width:2px;background:#cbd5e1;height:90px}
+    .node{background:#fff;border:2px solid var(--border);border-radius:10px;padding:14px 18px;min-width:260px;
+      text-align:left;box-shadow:0 3px 10px rgba(0,0,0,.06);display:flex;gap:12px;align-items:center;cursor:pointer}
+    .node:hover{border-color:var(--primary)}
+    .node .icon{width:24px;height:24px;flex:0 0 24px}
+    .node .title{font-weight:700;color:#111827;display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+    .node .sub{font-size:.82rem;color:var(--muted)}
+    .node.trigger{border-style:dashed;border-color:var(--primary);background:#eef2ff;color:#4338ca}
+
+    .badge{background:#e5e7eb;color:#111827;border-radius:999px;font-size:.72rem;padding:2px 8px}
+    .plus{width:38px;height:38px;border-radius:50%;background:var(--primary);color:#fff;
+      display:flex;align-items:center;justify-content:center;font-weight:800}
+    .end{background:#9ca3af;color:#fff;border-radius:999px;padding:6px 16px;font-size:.82rem}
+
+    /* Drawers (right) */
+    .drawer{position:fixed;top:0;right:-420px;width:420px;height:100vh;background:#fff;box-shadow:-2px 0 12px rgba(0,0,0,.08);
+      transition:right .25s ease;display:flex;flex-direction:column;z-index:50}
+    .drawer.open{right:0}
+    .drawer-header{padding:1rem;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center}
+    .drawer-header h2{margin:0;font-size:1rem}
+    .drawer-sub{padding:0 1rem .7rem;color:var(--muted);font-size:.9rem;border-bottom:1px solid var(--border)}
+    .drawer-content{padding:1rem;overflow:auto}
+    .search{display:flex;align-items:center;border:1px solid var(--border);border-radius:8px;padding:6px 8px;margin-bottom:12px}
+    .search input{border:none;outline:none;flex:1}
+    .group{margin-bottom:18px}
+    .group h3{margin:.2rem 0 .6rem;font-size:.88rem;color:#111827}
+    .item{display:flex;align-items:center;gap:10px;border:1px solid var(--border);background:#f9fafb;border-radius:10px;padding:10px;margin-bottom:8px;cursor:pointer}
+    .item:hover{background:#eef2ff;border-color:#dbe3ff}
+    .item img{width:22px;height:22px}
+
+    /* Config drawer fields */
+    .field{display:flex;flex-direction:column;gap:6px;margin-bottom:12px}
+    .field label{font-weight:600}
+    .field input,.field textarea,.field select{
+      border:1px solid var(--border);border-radius:8px;padding:8px;outline:none
+    }
+
+    /* History list */
+    .history-list{display:flex;flex-direction:column;gap:8px}
+    .history-item{display:flex;justify-content:space-between;align-items:center;border:1px solid var(--border);border-radius:10px;padding:10px;background:#f9fafb}
+    .history-item .ts{font-weight:600}
+    .history-item .actions{display:flex;gap:8px}
+
+    /* Toast */
+    .toast{position:fixed;right:20px;bottom:20px;background:var(--success);color:#fff;padding:10px 14px;border-radius:10px;
+      box-shadow:0 10px 24px rgba(22,163,74,.35);opacity:0;pointer-events:none;transform:translateY(10px);transition:opacity .25s, transform .25s;z-index:200}
+    .toast.show{opacity:1;transform:translateY(0)}
+  </style>
+</head>
+<body>
+  <!-- Top bar -->
+  <div class="topbar">
+    <h1 id="workflowName">New Workflow</h1>
+    <div class="topbar-right">
+      <div class="toggle">
+        <label>Draft</label><input type="checkbox" id="publishToggle"><label>Publish</label>
+      </div>
+      <button class="btn secondary" id="historyBtn">History</button>
+      <div class="last-saved muted" id="lastSaved">Last saved: —</div>
+      <button class="btn" id="saveBtn">Save</button>
+    </div>
+  </div>
+
+  <!-- Workspace -->
+  <div class="workspace" id="workspace">
+    <div class="canvas" id="canvas">
+      <!-- Trigger node (placeholder initially) -->
+      <div class="node trigger" id="triggerNode">
+        <img class="icon" src="https://img.icons8.com/ios-filled/50/4f46e5/flash-on.png" alt="">
+        <div>
+          <div class="title" id="triggerTitle">＋ Add New Trigger</div>
+          <div class="sub">Choose how contacts enter this workflow</div>
+        </div>
+      </div>
+
+      <div class="line"></div>
+      <!-- First plus node -->
+      <div class="plus" id="plus-0">+</div>
+      <div class="line"></div>
+      <div class="end">END</div>
+    </div>
+  </div>
+
+  <!-- Zoom controls -->
+  <div class="zoom" style="position:fixed;left:1rem;bottom:1rem;background:#fff;border:1px solid var(--border);border-radius:10px;overflow:hidden;box-shadow:0 2px 6px rgba(0,0,0,.08);z-index:100">
+    <button id="zoomIn" style="width:42px;height:40px;border:none;border-bottom:1px solid var(--border);background:#fff;font-size:18px;cursor:pointer">+</button>
+    <span id="zoomLabel" style="display:block;text-align:center;padding:6px 0;font-weight:700;color:#374151">100%</span>
+    <button id="zoomOut" style="width:42px;height:40px;border:none;background:#fff;font-size:18px;cursor:pointer">−</button>
+  </div>
+
+  <!-- Trigger Drawer -->
+  <div class="drawer" id="triggerDrawer">
+    <div class="drawer-header">
+      <h2>Add Trigger</h2>
+      <button class="btn secondary" id="closeTrigger">Close</button>
+    </div>
+    <div class="drawer-sub">Adds a workflow trigger; on execution, the Contact is added to the workflow.</div>
+    <div class="drawer-content">
+      <div class="search"><input id="triggerSearch" placeholder="Search triggers..." /></div>
+
+      <div class="group">
+        <h3>Contact</h3>
+        <div class="item" data-key="birthday" data-label="Birthday Reminder"><img src="https://img.icons8.com/ios/50/4f46e5/birthday.png"/><span>Birthday Reminder</span></div>
+        <div class="item" data-key="contact_changed" data-label="Contact Changed"><img src="https://img.icons8.com/ios/50/4f46e5/replace-user.png"/><span>Contact Changed</span></div>
+        <div class="item" data-key="contact_created" data-label="Contact Created"><img src="https://img.icons8.com/ios/50/4f46e5/add-user-group-man-man.png"/><span>Contact Created</span></div>
+        <div class="item" data-key="contact_dnd" data-label="Contact DND"><img src="https://img.icons8.com/ios/50/4f46e5/do-not-disturb.png"/><span>Contact DND</span></div>
+        <div class="item" data-key="contact_tag" data-label="Contact Tag"><img src="https://img.icons8.com/ios/50/4f46e5/tag-window.png"/><span>Contact Tag</span></div>
+        <div class="item" data-key="custom_date" data-label="Custom Date Reminder"><img src="https://img.icons8.com/ios/50/4f46e5/calendar.png"/><span>Custom Date Reminder</span></div>
+        <div class="item" data-key="note_added" data-label="Note Added"><img src="https://img.icons8.com/ios/50/4f46e5/note.png"/><span>Note Added</span></div>
+        <div class="item" data-key="note_changed" data-label="Note Changed"><img src="https://img.icons8.com/ios/50/4f46e5/edit-file.png"/><span>Note Changed</span></div>
+      </div>
+
+      <div class="group">
+        <h3>Events</h3>
+        <div class="item" data-key="webhook_in" data-label="Inbound Webhook"><img src="https://img.icons8.com/ios/50/4f46e5/webhook.png"/><span>Inbound Webhook</span></div>
+        <div class="item" data-key="scheduler" data-label="Scheduler"><img src="https://img.icons8.com/ios/50/4f46e5/scheduler.png"/><span>Scheduler</span></div>
+        <div class="item" data-key="email_events" data-label="Email Events"><img src="https://img.icons8.com/ios/50/4f46e5/new-post.png"/><span>Email Events</span></div>
+        <div class="item" data-key="customer_replied" data-label="Customer Replied"><img src="https://img.icons8.com/ios/50/4f46e5/speech-bubble.png"/><span>Customer Replied</span></div>
+        <div class="item" data-key="form_submitted" data-label="Form Submitted"><img src="https://img.icons8.com/ios/50/4f46e5/survey.png"/><span>Form Submitted</span></div>
+        <div class="item" data-key="survey_submitted" data-label="Survey Submitted"><img src="https://img.icons8.com/ios/50/4f46e5/checkbox.png"/><span>Survey Submitted</span></div>
+        <div class="item" data-key="trigger_link" data-label="Trigger Link Clicked"><img src="https://img.icons8.com/ios/50/4f46e5/link.png"/><span>Trigger Link Clicked</span></div>
+      </div>
+
+      <div style="margin-top:10px;border-top:1px solid var(--border);padding-top:10px">
+        <button class="btn danger" id="deleteTriggerBtn">Delete Trigger</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Action Drawer -->
+  <div class="drawer" id="actionDrawer">
+    <div class="drawer-header">
+      <h2>Actions</h2>
+      <button class="btn secondary" id="closeAction">Close</button>
+    </div>
+    <div class="drawer-sub">Pick an action for this step.</div>
+    <div class="drawer-content">
+      <div class="search"><input id="actionSearch" placeholder="Search actions..." /></div>
+
+      <div class="group">
+        <h3>Contact</h3>
+        <div class="item" data-type="action" data-key="create_contact" data-label="Create Contact"><img src="https://img.icons8.com/ios/50/4f46e5/add-user-male.png"/><span>Create Contact</span></div>
+        <div class="item" data-type="action" data-key="find_contact" data-label="Find Contact"><img src="https://img.icons8.com/ios/50/4f46e5/search.png"/><span>Find Contact</span></div>
+        <div class="item" data-type="action" data-key="update_field" data-label="Update Contact Field"><img src="https://img.icons8.com/ios/50/4f46e5/edit.png"/><span>Update Contact Field</span></div>
+        <div class="item" data-type="action" data-key="add_tag" data-label="Add Contact Tag"><img src="https://img.icons8.com/ios/50/4f46e5/tag-window.png"/><span>Add Contact Tag</span></div>
+        <div class="item" data-type="action" data-key="remove_tag" data-label="Remove Contact Tag"><img src="https://img.icons8.com/ios/50/4f46e5/tags.png"/><span>Remove Contact Tag</span></div>
+        <div class="item" data-type="action" data-key="assign_user" data-label="Assign To User"><img src="https://img.icons8.com/ios/50/4f46e5/conference-background-selected.png"/><span>Assign To User</span></div>
+        <div class="item" data-type="action" data-key="remove_assigned" data-label="Remove Assigned User"><img src="https://img.icons8.com/ios/50/4f46e5/minus.png"/><span>Remove Assigned User</span></div>
+        <div class="item" data-type="action" data-key="toggle_dnd" data-label="Enable/Disable DND"><img src="https://img.icons8.com/ios/50/4f46e5/do-not-disturb.png"/><span>Enable/Disable DND</span></div>
+        <div class="item" data-type="action" data-key="add_note" data-label="Add To Notes"><img src="https://img.icons8.com/ios/50/4f46e5/note.png"/><span>Add To Notes</span></div>
+      </div>
+
+      <div class="group">
+        <h3>Communication</h3>
+        <div class="item" data-type="action" data-key="send_email" data-label="Send Email"><img src="https://img.icons8.com/ios/50/4f46e5/new-post.png"/><span>Send Email</span></div>
+        <div class="item" data-type="action" data-key="send_sms" data-label="Send SMS"><img src="https://img.icons8.com/ios/50/4f46e5/sms.png"/><span>Send SMS</span></div>
+        <div class="item" data-type="action" data-key="call" data-label="Call"><img src="https://img.icons8.com/ios/50/4f46e5/phone.png"/><span>Call</span></div>
+        <div class="item" data-type="action" data-key="voicemail" data-label="Voicemail"><img src="https://img.icons8.com/ios/50/4f46e5/voicemail.png"/><span>Voicemail</span></div>
+        <div class="item" data-type="action" data-key="slack" data-label="Slack"><img src="https://img.icons8.com/ios/50/4f46e5/slack.png"/><span>Slack</span></div>
+        <div class="item" data-type="action" data-key="messenger" data-label="Messenger"><img src="https://img.icons8.com/ios/50/4f46e5/facebook-messenger.png"/><span>Messenger</span></div>
+        <div class="item" data-type="action" data-key="instagram_dm" data-label="Instagram DM"><img src="https://img.icons8.com/ios/50/4f46e5/instagram-new.png"/><span>Instagram DM</span></div>
+      </div>
+
+      <div class="group">
+        <h3>Internal</h3>
+        <div class="item" data-type="action" data-key="if_else" data-label="If / Else"><img src="https://img.icons8.com/ios/50/4f46e5/split.png"/><span>If / Else</span></div>
+        <div class="item" data-type="action" data-key="wait" data-label="Wait"><img src="https://img.icons8.com/ios/50/4f46e5/hourglass-sand-top.png"/><span>Wait</span></div>
+        <div class="item" data-type="action" data-key="goal" data-label="Goal Event"><img src="https://img.icons8.com/ios/50/4f46e5/goal.png"/><span>Goal Event</span></div>
+        <div class="item" data-type="action" data-key="split" data-label="Split"><img src="https://img.icons8.com/ios/50/4f46e5/fork.png"/><span>Split</span></div>
+        <div class="item" data-type="action" data-key="goto" data-label="Go To"><img src="https://img.icons8.com/ios/50/4f46e5/arrow.png"/><span>Go To</span></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Config Drawer -->
+  <div class="drawer" id="configDrawer">
+    <div class="drawer-header">
+      <h2 id="configTitle">Configure Action</h2>
+      <button class="btn secondary" id="closeConfig">Close</button>
+    </div>
+    <div class="drawer-content" id="configContent"></div>
+    <div class="drawer-sub" style="display:flex;gap:8px;align-items:center;justify-content:space-between;border-top:1px solid var(--border);padding:10px 16px;">
+      <button class="btn danger" id="deleteStepBtn">Delete Step</button>
+      <button class="btn" id="saveConfigBtn">Save Configuration</button>
+    </div>
+  </div>
+
+  <!-- History Drawer -->
+  <div class="drawer" id="historyDrawer">
+    <div class="drawer-header">
+      <h2>History</h2>
+      <button class="btn secondary" id="closeHistory">Close</button>
+    </div>
+    <div class="drawer-sub">Local versions (latest 10). Click Restore to load it.</div>
+    <div class="drawer-content">
+      <div id="historyList" class="history-list"></div>
+    </div>
+  </div>
+
+  <!-- Toast -->
+  <div class="toast" id="toast">✅ Saved to Supabase</div>
+
+  <!-- Supabase -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script>
+    /* ---------- Supabase ---------- */
+    const SUPABASE_URL = "https://usopxhshfmmtnnvkzelj.supabase.co";
+    const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVzb3B4aHNoZm1tdG5udmt6ZWxqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjA4MTc2MzIsImV4cCI6MjA3NjM5MzYzMn0.3qG3t-QTc6UsRt74GXjL_pBVfibG42X5wGyWRLYu3NE";
+    const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    const params = new URLSearchParams(location.search);
+    const automationId = params.get("id");
+
+    /* ---------- State ---------- */
+    const workflow = {
+      trigger: null,     // { key, label, icon, config? }
+      actions: []        // array of { id, key, label, icon, config: {..} }
+    };
+    let currentConfigActionId = null;
+    let editingTrigger = false; // config drawer context
+
+    /* ---------- Title & initial load ---------- */
+    async function syncTitleAndLoad() {
+      let title = params.get("name") || localStorage.getItem("workflowName") || "New Workflow";
+      if (automationId) {
+        const { data, error } = await supabase
+          .from("automations")
+          .select("name, trigger, actions")
+          .eq("id", automationId)
+          .single();
+        if (!error && data) {
+          if (data.name) title = data.name;
+          // hydrate workflow from DB if present
+          try {
+            if (data.trigger) {
+              const t = Array.isArray(data.trigger) ? data.trigger[0] : data.trigger;
+              if (t) workflow.trigger = t;
+            }
+            if (data.actions && Array.isArray(data.actions)) {
+              workflow.actions = data.actions;
+            }
+            // reflect on UI
+            hydrateTriggerUI();
+            renderFlow();
+          } catch (e) { console.warn("Hydrate parse:", e); }
+        }
+      }
+      document.getElementById("workflowName").textContent = title;
+    }
+
+    function hydrateTriggerUI(){
+      const titleEl = document.getElementById("triggerTitle");
+      const trg = document.getElementById("triggerNode");
+      if (workflow.trigger?.label) {
+        titleEl.textContent = workflow.trigger.label;
+        trg.classList.remove("trigger");
+        trg.style.borderColor = "var(--primary)";
+      } else {
+        titleEl.textContent = "＋ Add New Trigger";
+        trg.classList.add("trigger");
+        trg.style.borderColor = "var(--primary)";
+      }
+    }
+
+    /* ---------- Canvas rendering ---------- */
+    const canvas = document.getElementById("canvas");
+
+    function renderFlow(){
+      // Keep trigger node as first child
+      const triggerNode = document.getElementById("triggerNode");
+      canvas.innerHTML = "";
+      canvas.appendChild(triggerNode);
+
+      canvas.appendChild(lineEl());
+
+      if (workflow.actions.length === 0) {
+        canvas.appendChild(plusEl(0));
+        canvas.appendChild(lineEl());
+        canvas.appendChild(endEl());
+        return;
+      }
+
+      workflow.actions.forEach((a, idx) => {
+        canvas.appendChild(actionEl(a));
+        canvas.appendChild(lineEl());
+        canvas.appendChild(plusEl(idx+1));
+        canvas.appendChild(lineEl());
+      });
+      canvas.appendChild(endEl());
+    }
+
+    function lineEl(){ const d=document.createElement("div"); d.className="line"; return d; }
+    function endEl(){ const d=document.createElement("div"); d.className="end"; d.textContent="END"; return d; }
+    function plusEl(positionIndex){
+      const d=document.createElement("div");
+      d.className="plus"; d.textContent="+";
+      d.dataset.pos = positionIndex;
+      d.addEventListener("click", () => openActionDrawer(positionIndex));
+      return d;
+    }
+    function actionEl(action){
+      const n=document.createElement("div");
+      n.className="node";
+      n.dataset.id = action.id;
+      n.innerHTML = `
+        <img class="icon" src="${action.icon}" />
+        <div>
+          <div class="title">${action.label} ${action.config?'<span class="badge">Configured</span>':''}</div>
+          <div class="sub">${action.config ? 'Click to edit settings' : 'Click to configure'}</div>
+        </div>
+      `;
+      n.addEventListener("click", () => openConfigDrawer(action.id));
+      return n;
+    }
+
+    /* ---------- Trigger Drawer ---------- */
+    const triggerDrawer = document.getElementById("triggerDrawer");
+    document.getElementById("triggerNode").addEventListener("click", () => { triggerDrawer.classList.add("open"); editingTrigger = true; });
+    document.getElementById("closeTrigger").addEventListener("click", () => triggerDrawer.classList.remove("open"));
+
+    document.getElementById("triggerSearch").addEventListener("input", (e)=>{
+      const q = e.target.value.toLowerCase();
+      triggerDrawer.querySelectorAll(".item").forEach(it=>{
+        it.style.display = it.textContent.toLowerCase().includes(q) ? "flex" : "none";
+      });
+    });
+
+    triggerDrawer.querySelectorAll(".item").forEach(it=>{
+      it.addEventListener("click", ()=>{
+        const key = it.dataset.key;
+        const label = it.dataset.label;
+        workflow.trigger = { key, label, icon: "https://img.icons8.com/ios-filled/50/4f46e5/flash-on.png", config:{} };
+        hydrateTriggerUI();
+        triggerDrawer.classList.remove("open");
+        // open trigger config right away
+        openTriggerConfig();
+      });
+    });
+
+    document.getElementById("deleteTriggerBtn").addEventListener("click", ()=>{
+      if (!workflow.trigger) { triggerDrawer.classList.remove("open"); return; }
+      if (!confirm('Are you sure you want to delete the trigger?')) return;
+      workflow.trigger = null;
+      hydrateTriggerUI();
+      triggerDrawer.classList.remove("open");
+    });
+
+    /* ---------- Action Drawer ---------- */
+    const actionDrawer = document.getElementById("actionDrawer");
+    document.getElementById("closeAction").addEventListener("click", ()=> actionDrawer.classList.remove("open"));
+    document.getElementById("actionSearch").addEventListener("input",(e)=>{
+      const q = e.target.value.toLowerCase();
+      actionDrawer.querySelectorAll(".item").forEach(it=>{
+        it.style.display = it.textContent.toLowerCase().includes(q) ? "flex" : "none";
+      });
+    });
+    let pendingInsertIndex = 0;
+    function openActionDrawer(insertIndex){ pendingInsertIndex = insertIndex; actionDrawer.classList.add("open"); }
+
+    actionDrawer.querySelectorAll(".item").forEach(it=>{
+      it.addEventListener("click", ()=>{
+        const key = it.dataset.key;
+        const label = it.dataset.label;
+        const icon = iconFor(key);
+        const id = "a_" + Date.now() + "_" + Math.floor(Math.random()*9999);
+        const action = { id, key, label, icon, config:{} };
+        workflow.actions.splice(pendingInsertIndex, 0, action);
+        actionDrawer.classList.remove("open");
+        renderFlow();
+        openConfigDrawer(id);
+      });
+    });
+
+    /* ---------- Config Drawer ---------- */
+    const configDrawer = document.getElementById("configDrawer");
+    const configTitle = document.getElementById("configTitle");
+    const configContent = document.getElementById("configContent");
+    const deleteStepBtn = document.getElementById("deleteStepBtn");
+    document.getElementById("closeConfig").addEventListener("click", ()=> configDrawer.classList.remove("open"));
+
+    function openTriggerConfig(){
+      editingTrigger = true; currentConfigActionId = null;
+      configTitle.textContent = `Configure Trigger`;
+      configContent.innerHTML = buildTriggerForm(workflow.trigger);
+      configDrawer.classList.add("open");
+      deleteStepBtn.onclick = () => {
+        if (!confirm('Are you sure you want to delete this step?')) return;
+        workflow.trigger = null; hydrateTriggerUI(); configDrawer.classList.remove("open");
+      };
+    }
+
+    function openConfigDrawer(actionId){
+      editingTrigger = false; currentConfigActionId = actionId;
+      const act = workflow.actions.find(a=>a.id===actionId);
+      if(!act) return;
+      configTitle.textContent = `Configure: ${act.label}`;
+      configContent.innerHTML = buildConfigForm(act);
+      configDrawer.classList.add("open");
+      deleteStepBtn.onclick = () => {
+        if (!confirm('Are you sure you want to delete this step?')) return;
+        const idx = workflow.actions.findIndex(a=>a.id===actionId);
+        if (idx>-1) workflow.actions.splice(idx,1);
+        configDrawer.classList.remove("open");
+        renderFlow();
+      };
+    }
+
+    document.getElementById("saveConfigBtn").addEventListener("click", ()=>{
+      if (editingTrigger) {
+        // collect fields for trigger
+        if(!workflow.trigger) return;
+        const fields = configContent.querySelectorAll("[data-field]");
+        const cfg = {};
+        fields.forEach(f=> cfg[f.dataset.field] = f.value );
+        workflow.trigger.config = cfg;
+        configDrawer.classList.remove("open");
+        return;
+      }
+      if(!currentConfigActionId) return;
+      const act = workflow.actions.find(a=>a.id===currentConfigActionId);
+      if(!act) return;
+      const fields = configContent.querySelectorAll("[data-field]");
+      const cfg = {};
+      fields.forEach(f=> cfg[f.dataset.field] = f.value );
+      act.config = cfg;
+      configDrawer.classList.remove("open");
+      renderFlow();
+    });
+
+    function fieldStr(label, key, type="text", placeholder=""){
+      if(type==="textarea"){
+        return `<div class="field"><label>${label}</label><textarea rows="5" data-field="${key}" placeholder="${placeholder}"></textarea></div>`;
+      }
+      if(type==="select"){
+        return `<div class="field"><label>${label}</label><select data-field="${key}">${placeholder}</select></div>`;
+      }
+      return `<div class="field"><label>${label}</label><input data-field="${key}" type="${type}" placeholder="${placeholder}"/></div>`;
+    }
+
+    function buildTriggerForm(t){
+      // Simple generic placeholders for all triggers
+      return [
+        fieldStr("Trigger Name","name","text", t?.label || "Trigger"),
+        fieldStr("Description","desc","textarea","Optional description...")
+      ].join("");
+    }
+
+    function buildConfigForm(a){
+      switch(a.key){
+        case "send_email":
+          return [
+            fieldStr("Subject","subject","text","Your subject line"),
+            fieldStr("Body","body","textarea","Write your email here...")
+          ].join("");
+        case "send_sms":
+          return [
+            fieldStr("Phone Number","phone","tel","+63 912 345 6789"),
+            fieldStr("Message","message","textarea","Type your SMS message…")
+          ].join("");
+        case "call":
+          return [ fieldStr("Phone Number","phone","tel","+63 912 345 6789") ].join("");
+        case "voicemail":
+          return [ fieldStr("Message","message","textarea","Voicemail content…") ].join("");
+        case "wait":
+          return [
+            fieldStr("Duration","duration","number","1"),
+            fieldStr("Unit","unit","select",`
+              <option value="minutes">Minutes</option>
+              <option value="hours">Hours</option>
+              <option value="days" selected>Days</option>
+            `)
+          ].join("");
+        case "add_tag":
+        case "remove_tag":
+          return [ fieldStr("Tag Name","tag","text","Prospect") ].join("");
+        case "update_field":
+          return [
+            fieldStr("Field API Name","field","text","custom_field"),
+            fieldStr("New Value","value","text","")
+          ].join("");
+        case "assign_user":
+          return [ fieldStr("User Email","user_email","email","agent@loomcrm.com") ].join("");
+        case "remove_assigned":
+          return [ `<p class="muted">This will remove any assigned user from the contact.</p>` ].join("");
+        case "toggle_dnd":
+          return [
+            fieldStr("Mode","mode","select",`
+              <option value="enable">Enable DND</option>
+              <option value="disable">Disable DND</option>
+            `)
+          ].join("");
+        case "add_note":
+          return [ fieldStr("Note","note","textarea","Add an internal note…") ].join("");
+        case "if_else":
+          return [
+            fieldStr("Field","field","text","email"),
+            fieldStr("Comparison","op","select",`
+              <option value="equals">Equals</option>
+              <option value="not_equals">Not Equals</option>
+              <option value="contains">Contains</option>
+            `),
+            fieldStr("Value","value","text","example@site.com")
+          ].join("");
+        case "goal":
+          return [ fieldStr("Goal Name","goal","text","Booked Appointment") ].join("");
+        case "split":
+          return [ fieldStr("Split Ratio (A:B)","ratio","text","50:50") ].join("");
+        case "goto":
+          return [ fieldStr("Go To Step Label","target","text","Email #2") ].join("");
+        case "create_contact":
+          return [ fieldStr("Name","name","text","Juan Dela Cruz"), fieldStr("Email","email","email","juan@example.com"), fieldStr("Phone","phone","tel","+63 912 345 6789") ].join("");
+        case "find_contact":
+          return [ fieldStr("Search Field","field","text","email"), fieldStr("Value","value","text","example@example.com") ].join("");
+        case "slack":
+          return [ fieldStr("Channel","channel","text","#sales"), fieldStr("Message","message","textarea","New lead created!") ].join("");
+        case "messenger":
+        case "instagram_dm":
+          return [ fieldStr("Recipient","recipient","text","@username"), fieldStr("Message","message","textarea","Hi! Thanks for reaching out.") ].join("");
+        default:
+          return [
+            fieldStr("Note","note","textarea",`Configuration for ${a.label}...`)
+          ].join("");
+      }
+    }
+
+    function iconFor(key){
+      const map = {
+        send_email:"https://img.icons8.com/ios/50/4f46e5/new-post.png",
+        send_sms:"https://img.icons8.com/ios/50/4f46e5/sms.png",
+        call:"https://img.icons8.com/ios/50/4f46e5/phone.png",
+        voicemail:"https://img.icons8.com/ios/50/4f46e5/voicemail.png",
+        add_tag:"https://img.icons8.com/ios/50/4f46e5/tag-window.png",
+        remove_tag:"https://img.icons8.com/ios/50/4f46e5/tags.png",
+        wait:"https://img.icons8.com/ios/50/4f46e5/hourglass-sand-top.png",
+        if_else:"https://img.icons8.com/ios/50/4f46e5/split.png",
+        goal:"https://img.icons8.com/ios/50/4f46e5/goal.png",
+        split:"https://img.icons8.com/ios/50/4f46e5/fork.png",
+        goto:"https://img.icons8.com/ios/50/4f46e5/arrow.png",
+        create_contact:"https://img.icons8.com/ios/50/4f46e5/add-user-male.png",
+        find_contact:"https://img.icons8.com/ios/50/4f46e5/search.png",
+        update_field:"https://img.icons8.com/ios/50/4f46e5/edit.png",
+        assign_user:"https://img.icons8.com/ios/50/4f46e5/conference-background-selected.png",
+        remove_assigned:"https://img.icons8.com/ios/50/4f46e5/minus.png",
+        toggle_dnd:"https://img.icons8.com/ios/50/4f46e5/do-not-disturb.png",
+        add_note:"https://img.icons8.com/ios/50/4f46e5/note.png",
+        slack:"https://img.icons8.com/ios/50/4f46e5/slack.png",
+        messenger:"https://img.icons8.com/ios/50/4f46e5/facebook-messenger.png",
+        instagram_dm:"https://img.icons8.com/ios/50/4f46e5/instagram-new.png"
+      };
+      return map[key] || "https://img.icons8.com/ios-filled/50/4f46e5/flash-on.png";
+    }
+
+    /* ---------- Zoom & Pan ---------- */
+    const workspace = document.getElementById("workspace");
+    let scale = 1, tx = 0, ty = 0, panning=false, sx=0, sy=0;
+    function applyTransform(){ document.getElementById("canvas").style.transform = `translate(calc(-50% + ${tx}px), calc(-50% + ${ty}px)) scale(${scale})`; document.getElementById("zoomLabel").textContent = Math.round(scale*100)+"%"; }
+    document.getElementById("zoomIn").addEventListener("click", ()=>{ scale = Math.min(2, scale+0.1); applyTransform(); });
+    document.getElementById("zoomOut").addEventListener("click", ()=>{ scale = Math.max(0.5, scale-0.1); applyTransform(); });
+    workspace.addEventListener("mousedown",(e)=>{ panning=true; sx=e.clientX - tx; sy=e.clientY - ty; workspace.style.cursor="grabbing"; e.preventDefault(); });
+    window.addEventListener("mouseup",()=>{ panning=false; workspace.style.cursor="grab"; });
+    window.addEventListener("mousemove",(e)=>{ if(!panning) return; tx = e.clientX - sx; ty = e.clientY - sy; applyTransform(); });
+
+    /* ---------- Save: Local History + Supabase ---------- */
+    const toast = document.getElementById("toast");
+    const lastSavedEl = document.getElementById("lastSaved");
+
+    function showToast(){
+      toast.classList.add("show");
+      setTimeout(()=> toast.classList.remove("show"), 2500);
+    }
+    function formatTs(d){ return new Date(d).toLocaleString(); }
+
+    function getHistory(){
+      const raw = localStorage.getItem("workflowHistory");
+      try { return raw ? JSON.parse(raw) : []; } catch(e){ return []; }
+    }
+    function setHistory(list){
+      localStorage.setItem("workflowHistory", JSON.stringify(list));
+    }
+    function pushHistory(){
+      const list = getHistory();
+      const snapshot = {
+        timestamp: new Date().toISOString(),
+        workflow: JSON.parse(JSON.stringify(workflow))
+      };
+      list.unshift(snapshot); // newest first
+      if (list.length>10) list.pop();
+      setHistory(list);
+    }
+    function refreshHistoryDrawer(){
+      const list = getHistory();
+      const box = document.getElementById("historyList");
+      box.innerHTML = "";
+      if (list.length===0){
+        box.innerHTML = `<div class="muted">No local saves yet.</div>`;
+        return;
+      }
+      list.forEach((snap, idx)=>{
+        const row = document.createElement("div");
+        row.className = "history-item";
+        row.innerHTML = `
+          <span class="ts">${formatTs(snap.timestamp)}</span>
+          <div class="actions"><button class="btn secondary" data-idx="${idx}">Restore</button></div>
+        `;
+        row.querySelector("button").addEventListener("click", ()=>{
+          // restore
+          workflow.trigger = snap.workflow.trigger || null;
+          workflow.actions = Array.isArray(snap.workflow.actions) ? snap.workflow.actions : [];
+          hydrateTriggerUI();
+          renderFlow();
+        });
+        box.appendChild(row);
+      });
+    }
+
+    document.getElementById("saveBtn").addEventListener("click", async ()=>{
+      if(!automationId){ alert("Missing automation ID in URL."); return; }
+      // 1) Local history
+      pushHistory();
+
+      // 2) Supabase push
+      const triggerJSON = workflow.trigger ? [workflow.trigger] : [];
+      const actionsJSON = workflow.actions.map(a=>({ id:a.id, key:a.key, label:a.label, icon:a.icon, config:a.config||{} }));
+      const { error } = await supabase.from("automations").update({
+        trigger: JSON.stringify(triggerJSON),
+        actions: JSON.stringify(actionsJSON),
+        updated_at: new Date().toISOString()
+      }).eq("id", automationId);
+
+      if(error){
+        alert("Error saving: "+error.message);
+      }else{
+        showToast();
+        lastSavedEl.textContent = "Last saved: " + new Date().toLocaleTimeString();
+      }
+      // Do NOT auto-open history (manual per your preference)
+    });
+
+    /* ---------- History Drawer (manual) ---------- */
+    const historyDrawer = document.getElementById("historyDrawer");
+    document.getElementById("historyBtn").addEventListener("click", ()=>{
+      refreshHistoryDrawer();
+      historyDrawer.classList.add("open");
+    });
+    document.getElementById("closeHistory").addEventListener("click", ()=> historyDrawer.classList.remove("open"));
+
+    /* ---------- Publish toggle -> status ---------- */
+    document.getElementById("publishToggle").addEventListener("change", async (e)=>{
+      if(!automationId) return;
+      const status = e.target.checked ? "Active" : "Paused";
+      await supabase.from("automations").update({ status }).eq("id", automationId);
+    });
+
+    /* ---------- Helpers ---------- */
+    function iconForTrigger(){ return "https://img.icons8.com/ios-filled/50/4f46e5/flash-on.png"; }
+
+    /* ---------- Trigger click opens drawer ---------- */
+    document.getElementById("triggerNode").addEventListener("click", ()=> {
+      triggerDrawer.classList.add("open");
+      editingTrigger = true;
+    });
+
+    /* ---------- Action '+' handling already attached in renderFlow via openActionDrawer ---------- */
+
+    /* ---------- Boot ---------- */
+    (async function init(){
+      await syncTitleAndLoad();
+      renderFlow();
+    })();
+  </script>
+</body>
+</html>

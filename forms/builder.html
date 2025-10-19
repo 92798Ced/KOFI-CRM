@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Loom CRM — Form Builder</title>
+
+  <!-- Global app styles (keep yours) -->
+  <link rel="stylesheet" href="../styles.css" />
+  <!-- Builder-only styles -->
+  <link rel="stylesheet" href="builder.css" />
+
+  <!-- Libs -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
+</head>
+<body>
+  <!-- Header -->
+  <header class="builder-header">
+    <div class="header-left">
+      <button id="backBtn" class="ghost">← Back</button>
+      <h1 id="formTitle">Hello</h1>
+    </div>
+    <div class="header-right">
+      <button id="previewBtn" class="ghost icon">👁 Preview</button>
+      <button id="embedBtn" class="ghost icon">🔗 Embed</button>
+      <button id="saveForm" class="primary">💾 Saved</button>
+    </div>
+  </header>
+
+  <!-- 3-column layout -->
+  <div class="builder-layout">
+    <!-- Sidebar -->
+    <aside class="builder-sidebar">
+      <div class="tabs">
+        <button class="tab active" id="formElementsTab">Form Elements</button>
+        <button class="tab" id="stylingTab">Styling</button>
+      </div>
+
+      <!-- Form Elements panel -->
+      <div class="element-tab" id="formPanel">
+        <div class="section">
+          <div class="section-label">Inputs</div>
+          <div class="element-grid">
+            <div class="element-card" draggable="true" data-type="firstname"><p>First Name</p></div>
+            <div class="element-card" draggable="true" data-type="lastname"><p>Last Name</p></div>
+            <div class="element-card" draggable="true" data-type="fullname"><p>Full Name</p></div>
+            <div class="element-card" draggable="true" data-type="dob"><p>Date of Birth</p></div>
+            <div class="element-card" draggable="true" data-type="email"><p>Email</p></div>
+            <div class="element-card" draggable="true" data-type="phone"><p>Phone</p></div>
+          </div>
+        </div>
+
+        <div class="section">
+          <div class="section-label">Buttons</div>
+          <div class="element-grid">
+            <div class="element-card" draggable="true" data-type="button"><p>Submit</p></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Styling panel -->
+      <div class="element-tab hidden" id="stylePanel">
+        <div class="section">
+          <div class="section-label">Visual Elements</div>
+          <div class="element-grid">
+            <div class="element-card" draggable="true" data-type="text"><p>Text</p></div>
+            <div class="element-card" draggable="true" data-type="image"><p>Image</p></div>
+          </div>
+        </div>
+
+        <div class="section">
+          <div class="section-label">Typography</div>
+          <div class="style-grid">
+            <label for="fontSelect">Font Family</label>
+            <select id="fontSelect"></select>
+
+            <label for="fontSize">Base Font Size (px)</label>
+            <input id="fontSize" type="number" value="16"/>
+
+            <label for="lineHeight">Line Height</label>
+            <input id="lineHeight" type="number" step="0.1" value="1.5"/>
+          </div>
+        </div>
+      </div>
+    </aside>
+
+    <!-- Canvas -->
+    <main class="builder-canvas" id="formCanvas">
+      <p class="muted" id="emptyMsg">Drag elements here to build your form</p>
+    </main>
+
+    <!-- Inspector -->
+    <aside class="builder-inspector" id="inspector">
+      <h2>Element Settings</h2>
+      <div id="settingsPanel" class="settings-panel">
+        <p class="muted">Select an element to edit.</p>
+      </div>
+    </aside>
+  </div>
+
+  <!-- Embed Modal -->
+  <div id="embedModal" class="modal">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3>Embed this form</h3>
+        <button class="close-modal" aria-label="Close">×</button>
+      </div>
+      <p class="muted small">
+        ⚠️ Currently using <strong>http://localhost:8000</strong>. Change to your production domain when you deploy.
+      </p>
+
+      <div class="embed-block">
+        <label>Direct Link</label>
+        <div class="copy-row">
+          <input id="directLink" readonly />
+          <button id="copyLink" class="ghost">Copy</button>
+        </div>
+      </div>
+
+      <div class="embed-block">
+        <label>Iframe Embed</label>
+        <div class="copy-row">
+          <textarea id="iframeCode" rows="3" readonly></textarea>
+          <button id="copyIframe" class="ghost">Copy</button>
+        </div>
+      </div>
+
+      <div class="modal-actions">
+        <button class="ghost close-modal">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Your builder logic -->
+  <script src="builder.js"></script>
+
+  <!-- Small helpers to wire preview & embed -->
+  <script>
+    (function() {
+      const formId = new URLSearchParams(window.location.search).get("id");
+
+      const previewBtn = document.getElementById("previewBtn");
+      const embedBtn   = document.getElementById("embedBtn");
+      const modal      = document.getElementById("embedModal");
+      const closeBtns  = modal.querySelectorAll(".close-modal");
+
+      const directLink = document.getElementById("directLink");
+      const iframeCode = document.getElementById("iframeCode");
+      const copyLink   = document.getElementById("copyLink");
+      const copyIframe = document.getElementById("copyIframe");
+
+      const host = "http://localhost:8000"; // ⚠️ Change this to your production domain when deploying
+      const url  = `${host}/form.html?id=${formId}`;
+      const code = `<iframe src="${url}" width="100%" height="900" frameborder="0"></iframe>`;
+
+      function openModal() {
+        directLink.value = url;
+        iframeCode.value = code;
+        modal.classList.add("active");
+      }
+      function closeModal() { modal.classList.remove("active"); }
+
+      previewBtn.addEventListener("click", () => {
+        window.open(url, "_blank", "noopener");
+      });
+      embedBtn.addEventListener("click", openModal);
+      closeBtns.forEach(btn => btn.addEventListener("click", closeModal));
+      modal.addEventListener("click", (e) => {
+        if (e.target === modal) closeModal();
+      });
+
+      copyLink.addEventListener("click", async () => {
+        try { await navigator.clipboard.writeText(directLink.value); copyLink.textContent="Copied!"; setTimeout(()=>copyLink.textContent="Copy",1000); } catch {}
+      });
+      copyIframe.addEventListener("click", async () => {
+        try { await navigator.clipboard.writeText(iframeCode.value); copyIframe.textContent="Copied!"; setTimeout(()=>copyIframe.textContent="Copy",1000); } catch {}
+      });
+    })();
+  </script>
+</body>
+</html>

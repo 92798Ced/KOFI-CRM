@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Loom CRM – Login</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="styles.css" />
+  <link rel="icon" href="data:;base64,iVBORw0KGgo=" />
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    body {
+      font-family: "Inter", sans-serif;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+      background: radial-gradient(circle at top left, #1b002a, #0a0013);
+      color: white;
+      margin: 0;
+    }
+    .login-box {
+      background: rgba(255, 255, 255, 0.05);
+      padding: 2rem;
+      border-radius: 1rem;
+      width: 320px;
+      text-align: center;
+      box-shadow: 0 0 20px rgba(0, 0, 0, 0.3);
+      backdrop-filter: blur(8px);
+    }
+    .login-box h2 {
+      margin-bottom: 1rem;
+      font-weight: 600;
+      color: #fff;
+    }
+    input {
+      width: 100%;
+      padding: 0.6rem;
+      margin: 0.5rem 0;
+      border-radius: 6px;
+      border: none;
+      background: rgba(255, 255, 255, 0.1);
+      color: white;
+      outline: none;
+    }
+    input:focus {
+      background: rgba(255, 255, 255, 0.15);
+    }
+    button {
+      width: 100%;
+      padding: 0.6rem;
+      margin-top: 0.6rem;
+      background: linear-gradient(90deg, #8a2be2, #b84eff);
+      border: none;
+      border-radius: 6px;
+      color: white;
+      font-weight: 600;
+      cursor: pointer;
+      transition: 0.2s;
+    }
+    button:hover {
+      opacity: 0.9;
+    }
+    .status {
+      margin-top: 0.8rem;
+      font-size: 0.9rem;
+      min-height: 1.2rem;
+      color: #f77;
+    }
+    .loading {
+      opacity: 0.6;
+      pointer-events: none;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="login-box">
+    <h2>Login to Loom CRM</h2>
+    <input id="username" type="text" placeholder="Username" />
+    <input id="password" type="password" placeholder="Password" />
+    <button id="loginBtn">Login</button>
+    <p id="loginStatus" class="status"></p>
+  </div>
+
+  <script>
+    // --- Supabase setup ---
+    const SUPABASE_URL = "https://usopxhshfmmtnnvkzelj.supabase.co";
+    const SUPABASE_ANON_KEY =
+      "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVzb3B4aHNoZm1tdG5udmt6ZWxqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjA4MTc2MzIsImV4cCI6MjA3NjM5MzYzMn0.3qG3t-QTc6UsRt74GXjL_pBVfibG42X5wGyWRLYu3NE";
+
+    const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+    // --- Login event ---
+    document.getElementById("loginBtn").addEventListener("click", async () => {
+      const btn = document.getElementById("loginBtn");
+      const status = document.getElementById("loginStatus");
+      const username = document.getElementById("username").value.trim();
+      const password = document.getElementById("password").value.trim();
+
+      if (!username || !password) {
+        status.textContent = "Please fill in both fields.";
+        return;
+      }
+
+      btn.classList.add("loading");
+      status.style.color = "#aaa";
+      status.textContent = "Verifying...";
+
+      try {
+        const { data, error } = await supabase
+          .from("crm_users")
+          .select("*")
+          .eq("username", username)
+          .eq("password", password)
+          .maybeSingle();
+
+        console.log("Login check:", { data, error });
+
+        if (error || !data) {
+          status.style.color = "#f77";
+          status.textContent = "Invalid username or password.";
+          btn.classList.remove("loading");
+          return;
+        }
+
+        // Save session
+        localStorage.setItem("loom_user", JSON.stringify(data));
+
+        status.style.color = "#0f0";
+        status.textContent = "Login successful! Redirecting...";
+
+        // Redirect depending on role
+        setTimeout(() => {
+          if (data.role && data.role.toLowerCase() === "admin") {
+            window.location.href = "index.html"; // could change later
+          } else {
+            window.location.href = "index.html";
+          }
+        }, 800);
+      } catch (err) {
+        console.error(err);
+        status.style.color = "#f77";
+        status.textContent = "An unexpected error occurred.";
+      } finally {
+        btn.classList.remove("loading");
+      }
+    });
+  </script>
+</body>
+</html>

@@ -1,0 +1,456 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Calendar Editor</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  :root { --accent:#2563eb; }
+  *{box-sizing:border-box}
+  body{
+    font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial;
+    margin:0;background:#f9fafb;color:#111827;display:flex;height:100vh;overflow:hidden;
+  }
+  /* Left editor */
+  .editor{width:35%;background:#fff;border-right:1px solid #e5e7eb;display:flex;flex-direction:column}
+  .tabbar{display:flex;border-bottom:1px solid #e5e7eb}
+  .tabbtn{flex:1;padding:1rem 1.25rem;background:transparent;border:0;font-weight:600;color:#6b7280;cursor:pointer}
+  .tabbtn.active{color:var(--accent);border-bottom:3px solid var(--accent);background:#f3f4f6}
+  .tab{flex:1;padding:1.25rem;overflow:auto}
+  .hidden{display:none}
+  label{font-weight:600;display:block;margin-top:.75rem}
+  input,select,textarea{
+    width:100%;margin-top:.25rem;border:1px solid #d1d5db;border-radius:8px;padding:.6rem;
+    font:inherit;background:#fff;color:#111827
+  }
+  textarea{resize:vertical}
+  .row{display:flex;gap:.75rem}
+  .row > *{flex:1}
+  .sticky-actions{
+    position:sticky;bottom:0;display:flex;gap:.5rem;padding:1rem;border-top:1px solid #e5e7eb;background:#fff
+  }
+  .btn{border:0;border-radius:10px;padding:.75rem 1rem;font-weight:600;cursor:pointer}
+  .btn.primary{background:var(--accent);color:#fff}
+  .btn.ghost{background:#eef2ff;color:#1d4ed8}
+  /* Right preview container */
+  .preview{flex:1;position:relative;overflow:hidden}
+  .view{position:absolute;inset:0;opacity:0;pointer-events:none;transition:opacity .25s ease}
+  .view.active{opacity:1;pointer-events:auto}
+  /* Calendar preview */
+  .top{display:flex;align-items:center;gap:1rem;padding:2rem}
+  .top img{width:100px;height:100px;border-radius:10px;object-fit:cover;background:#f3f4f6}
+  .body{display:flex;gap:2rem;padding:0 2rem 2rem 2rem;height:calc(100% - 140px);overflow:hidden}
+  .info{width:35%;display:flex;flex-direction:column;gap:1rem}
+  .ui{flex:1;display:flex;flex-direction:column}
+  .calhdr{display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem}
+  .calhdr button{border:1px solid #d1d5db;background:#fff;border-radius:8px;padding:.35rem .6rem;cursor:pointer}
+  .grid{display:grid;grid-template-columns:repeat(7,1fr);gap:.4rem;margin-bottom:1rem}
+  .day{padding:.45rem 0;text-align:center;border-radius:8px;cursor:pointer}
+  .day:hover{background:#e0e7ff}
+  .day.active{background:var(--accent);color:#fff}
+  .slots{display:flex;flex-direction:column;gap:.5rem;overflow:auto;padding-right:.5rem}
+  .slot{
+    border:1px solid var(--accent);background:#eff6ff;color:var(--accent);
+    padding:.6rem;border-radius:8px;text-align:center;font-weight:600;cursor:pointer
+  }
+  .slot.taken{background:#e5e7eb;border-color:#d1d5db;color:#9ca3af;cursor:not-allowed}
+  /* Thank-you preview */
+  .ty-wrap{height:100%;display:flex;align-items:center;justify-content:center}
+  .ty-card{background:#fff;border:1px solid #e5e7eb;border-radius:16px;box-shadow:0 8px 24px rgba(0,0,0,.06);
+    width:min(520px,92vw);padding:2rem;text-align:center}
+  .ty-card h1{margin:0 0 .5rem 0}
+  .ty-card p{color:#374151;margin:.25rem 0 1rem}
+  .ics{display:inline-block;padding:.65rem 1rem;border-radius:10px;border:0;background:var(--accent);color:#fff;font-weight:600}
+  /* Modal */
+  .modal{position:fixed;inset:0;background:rgba(15,23,42,.45);backdrop-filter:blur(4px);display:none;align-items:center;justify-content:center;padding:1rem}
+  .modal.open{display:flex}
+  .sheet{background:#fff;border-radius:16px;box-shadow:0 20px 60px rgba(0,0,0,.2);width:min(720px,92vw);padding:1.25rem 1.25rem 1rem}
+  .sheet h3{margin:.25rem 0 1rem}
+  pre.code{background:#0b1020;color:#e5e7eb;border-radius:12px;padding:1rem;overflow:auto}
+  .copy{margin-top:.5rem}
+</style>
+</head>
+<body>
+  <!-- LEFT: CUSTOMIZER -->
+  <aside class="editor">
+    <div class="tabbar">
+      <button class="tabbtn active" data-tab="cal">Calendar Settings</button>
+      <button class="tabbtn" data-tab="ty">Thank You Page</button>
+    </div>
+
+    <!-- Calendar Tab -->
+    <section id="tab-cal" class="tab">
+      <div class="row">
+        <div>
+          <label>Title</label>
+          <input id="title" />
+        </div>
+        <div>
+          <label>Duration (mins)</label>
+          <input id="duration" type="number" min="5" value="15" />
+        </div>
+      </div>
+
+      <label>Description</label>
+      <textarea id="description" rows="3"></textarea>
+
+      <label>Information / Body Text</label>
+      <textarea id="body_text" rows="4"></textarea>
+
+      <div class="row">
+        <div>
+          <label>Accent Color</label>
+          <input id="theme_color" type="color" value="#2563eb" />
+        </div>
+        <div>
+          <label>Header Image URL</label>
+          <input id="image_url" placeholder="https://..." />
+        </div>
+      </div>
+
+      <label>Next Step Type</label>
+      <select id="next_step_type">
+        <option value="form">Import Form</option>
+        <option value="thankyou">Thank You Page</option>
+        <option value="url">External URL</option>
+      </select>
+	  
+	  <!-- This will appear only when "External URL" is chosen -->
+<div id="urlWrap" style="margin-top:.75rem; display:none;">
+  <label>External Link</label>
+  <input id="external_url" type="url" placeholder="https://example.com" />
+</div>
+
+
+      <div id="formWrap" class="row" style="margin-top:.5rem; display:none;">
+        <div>
+          <label>Select Form</label>
+          <select id="formSelector"></select>
+        </div>
+        <div>
+          <label>Redirect After Submit (optional)</label>
+          <input id="next_step_redirect" placeholder="https://your-thankyou.com" />
+        </div>
+      </div>
+
+      <div class="sticky-actions">
+        <button class="btn primary" id="saveBtn">Save</button>
+        <button class="btn ghost" id="exportBtn">Export</button>
+      </div>
+    </section>
+
+    <!-- Thank-you Tab -->
+    <section id="tab-ty" class="tab hidden">
+      <label>Message</label>
+      <textarea id="thankyou_message" rows="3" placeholder="Thanks for booking! See you soon!"></textarea>
+      <div style="margin-top:.5rem;">
+        <input type="checkbox" id="show_ics" checked />
+        <label for="show_ics">Show .ics Download Button</label>
+      </div>
+
+      <div class="sticky-actions">
+        <button class="btn primary" id="saveBtn2">Save</button>
+        <button class="btn ghost" id="exportBtn2">Export</button>
+      </div>
+    </section>
+  </aside>
+
+  <!-- RIGHT: PREVIEW -->
+  <main class="preview">
+    <!-- Calendar preview -->
+    <section id="view-cal" class="view active" aria-live="polite"></section>
+    <!-- Thank-you preview -->
+    <section id="view-ty" class="view" aria-live="polite"></section>
+  </main>
+
+  <!-- Export Modal -->
+  <div id="exportModal" class="modal" role="dialog" aria-modal="true">
+    <div class="sheet">
+      <h3>Publish & Embed</h3>
+      <p style="margin:.25rem 0 .5rem">Use this iframe to embed your scheduler, or share the direct link.</p>
+      <div>
+        <strong>Iframe</strong>
+        <pre class="code" id="iframeCode"></pre>
+        <button class="btn copy" id="copyIframe">Copy iframe</button>
+      </div>
+      <div style="margin-top:1rem">
+        <strong>Direct link</strong>
+        <pre class="code" id="linkCode"></pre>
+        <button class="btn copy" id="copyLink">Copy link</button>
+      </div>
+      <div style="text-align:right;margin-top:1rem">
+        <button class="btn" id="closeExport">Close</button>
+      </div>
+    </div>
+  </div>
+
+<script>
+  /* --- Supabase --- */
+  const SUPABASE_URL = "https://usopxhshfmmtnnvkzelj.supabase.co";
+  const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVzb3B4aHNoZm1tdG5udmt6ZWxqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjA4MTc2MzIsImV4cCI6MjA3NjM5MzYzMn0.3qG3t-QTc6UsRt74GXjL_pBVfibG42X5wGyWRLYu3NE";
+  const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+  const params = new URLSearchParams(window.location.search);
+  const id = params.get("id");
+
+  /* --- Elements --- */
+  const inputs = {
+    title: document.getElementById("title"),
+    description: document.getElementById("description"),
+    body_text: document.getElementById("body_text"),
+    duration: document.getElementById("duration"),
+    theme_color: document.getElementById("theme_color"),
+    next_step_type: document.getElementById("next_step_type"),
+    next_step_redirect: document.getElementById("next_step_redirect"),
+    image_url: document.getElementById("image_url"),
+    thankyou_message: document.getElementById("thankyou_message"),
+    show_ics: document.getElementById("show_ics")
+  };
+  const formWrap = document.getElementById("formWrap");
+  const formSelector = document.getElementById("formSelector");
+  const tabBtns = document.querySelectorAll(".tabbtn");
+  const tabCal = document.getElementById("tab-cal");
+  const tabTy = document.getElementById("tab-ty");
+  const viewCal = document.getElementById("view-cal");
+  const viewTy = document.getElementById("view-ty");
+  const exportModal = document.getElementById("exportModal");
+  const iframeCode = document.getElementById("iframeCode");
+  const linkCode = document.getElementById("linkCode");
+
+  /* --- State --- */
+  let current = new Date();
+  let selectedDate = null;
+  let selectedFormId = null;
+
+  /* --- Init --- */
+  tabBtns.forEach(b => b.onclick = () => {
+    tabBtns.forEach(x => x.classList.remove("active"));
+    b.classList.add("active");
+    const calActive = b.dataset.tab === "cal";
+    tabCal.classList.toggle("hidden", !calActive);
+    tabTy.classList.toggle("hidden", calActive);
+    viewCal.classList.toggle("active", calActive);
+    viewTy.classList.toggle("active", !calActive);
+    renderRight();
+  });
+
+  inputs.theme_color.addEventListener("input", () => {
+    document.documentElement.style.setProperty("--accent", inputs.theme_color.value || "#2563eb");
+    // re-render to update borders
+    renderRight();
+  });
+
+inputs.next_step_type.addEventListener("change", () => {
+  const type = inputs.next_step_type.value;
+  formWrap.style.display = type === "form" ? "flex" : "none";
+  document.getElementById("urlWrap").style.display = type === "url" ? "block" : "none";
+});
+
+
+  Object.values(inputs).forEach(el => el.addEventListener("input", renderRight));
+
+  document.getElementById("saveBtn").onclick = saveAll;
+  document.getElementById("saveBtn2").onclick = saveAll;
+  document.getElementById("exportBtn").onclick = openExport;
+  document.getElementById("exportBtn2").onclick = openExport;
+  document.getElementById("closeExport").onclick = () => exportModal.classList.remove("open");
+  document.getElementById("copyIframe").onclick = () => copyToClipboard(iframeCode.textContent);
+  document.getElementById("copyLink").onclick = () => copyToClipboard(linkCode.textContent);
+
+  loadAll();
+
+  async function loadAll(){
+    await loadForms();
+    const { data, error } = await supabase.from("crm_events").select("*").eq("id", id).maybeSingle();
+    if (error) { alert("Load error: " + error.message); return; }
+    if (!data) { alert("Calendar not found."); return; }
+    // hydrate
+    for (const k of Object.keys(inputs)) {
+      if (inputs[k].type === "checkbox") inputs[k].checked = !!data[k];
+      else inputs[k].value = data[k] ?? inputs[k].value;
+    }
+    if (data.next_step_type === "form" && data.next_step_target) {
+      selectedFormId = data.next_step_target;
+      formSelector.value = selectedFormId;
+      formWrap.style.display = "flex";
+    }
+    document.documentElement.style.setProperty("--accent", inputs.theme_color.value || "#2563eb");
+    renderRight();
+  }
+
+  async function loadForms(){
+    const { data, error } = await supabase.from("forms").select("id,title").order("updated_at",{ascending:false});
+    if (error) { console.warn(error); return; }
+    formSelector.innerHTML = "";
+    (data || []).forEach(f => {
+      const opt = document.createElement("option");
+      opt.value = f.id;
+      opt.textContent = f.title || "Untitled Form";
+      formSelector.appendChild(opt);
+    });
+    formSelector.onchange = () => { selectedFormId = formSelector.value; };
+  }
+
+  async function saveAll(){
+    const update = {};
+    for (const k of Object.keys(inputs)) {
+      update[k] = inputs[k].type === "checkbox" ? inputs[k].checked : inputs[k].value;
+    }
+	if (inputs.next_step_type.value === "form") {
+  update.next_step_target = formSelector.value || selectedFormId || null;
+} else if (inputs.next_step_type.value === "url") {
+  update.next_step_target = document.getElementById("external_url").value || null;
+} else {
+  update.next_step_target = null;
+}
+
+    if (inputs.next_step_type.value === "form") {
+      update.next_step_target = formSelector.value || selectedFormId || null;
+    } else {
+      update.next_step_target = inputs.next_step_type.value === "url" ? inputs.next_step_redirect.value : null;
+    }
+    const { error } = await supabase.from("crm_events").update(update).eq("id", id);
+    if (error) alert("Save failed: " + error.message);
+    else alert("✅ Saved!");
+  }
+
+  function openExport(){
+    const origin = window.location.origin || '';
+    const publicURL = `${origin}/forms/book.html?id=${id}`;
+    const iframe = `<iframe src="${publicURL}" width="100%" height="720" style="border:none" loading="lazy"></iframe>`;
+    iframeCode.textContent = iframe;
+    linkCode.textContent = publicURL;
+    exportModal.classList.add("open");
+  }
+
+  function copyToClipboard(text){
+    navigator.clipboard.writeText(text).then(()=>alert("Copied!"));
+  }
+
+  /* --------- RIGHT PREVIEW RENDERING --------- */
+  function renderRight(){
+    // Which preview is active?
+    const calendarActive = document.querySelector(".tabbtn.active").dataset.tab === "cal";
+    if (calendarActive) renderCalendarPreview();
+    else renderThankYouPreview();
+  }
+
+  function renderCalendarPreview(){
+    // shell
+    viewCal.innerHTML = `
+      <div class="top">
+        <img src="${inputs.image_url.value || '/assets/default-calendar.jpg'}" alt="Header">
+        <div>
+          <h2 style="margin:0">${inputs.title.value || 'Untitled Calendar'}</h2>
+          <p style="margin:.25rem 0 0;color:#4b5563">${inputs.description.value || ''}</p>
+        </div>
+      </div>
+      <div class="body">
+        <div class="info">
+          <p><strong>⏱ Duration:</strong> ${inputs.duration.value || 15} mins</p>
+          <p>${(inputs.body_text.value || '').replace(/\n/g,'<br>')}</p>
+        </div>
+        <div class="ui">
+          <div class="calhdr">
+            <button id="prevMonth">‹</button>
+            <h3 id="monthLabel" style="margin:0"></h3>
+            <button id="nextMonth">›</button>
+          </div>
+          <div id="calendarGrid" class="grid"></div>
+          <div id="timeSlots" class="slots"></div>
+        </div>
+      </div>
+    `;
+    // bind & paint
+    document.getElementById("prevMonth").onclick = ()=>{ current.setMonth(current.getMonth()-1); paintCalendar(); };
+    document.getElementById("nextMonth").onclick = ()=>{ current.setMonth(current.getMonth()+1); paintCalendar(); };
+    paintCalendar();
+  }
+
+  function renderThankYouPreview(){
+    viewTy.innerHTML = `
+      <div class="ty-wrap">
+        <div class="ty-card">
+          <h1>${inputs.thankyou_message.value || "Thank you!"}</h1>
+          <p>${inputs.next_step_redirect.value ? "You'll be redirected shortly." : ""}</p>
+          ${inputs.show_ics.checked ? `<button class="ics">Download .ics</button>` : ""}
+        </div>
+      </div>
+    `;
+  }
+
+  function paintCalendar(){
+    const monthNames = ["January","February","March","April","May","June","July","August","September","October","November","December"];
+    document.getElementById("monthLabel").textContent =
+      `${monthNames[current.getMonth()]} ${current.getFullYear()}`;
+
+    const grid = document.getElementById("calendarGrid");
+    grid.innerHTML = "";
+    const first = new Date(current.getFullYear(), current.getMonth(), 1).getDay();
+    const days = new Date(current.getFullYear(), current.getMonth()+1, 0).getDate();
+
+    for(let i=0;i<first;i++) grid.appendChild(document.createElement("div"));
+    for(let d=1; d<=days; d++){
+      const el = document.createElement("div");
+      el.className = "day";
+      el.textContent = d;
+      el.onclick = () => selectDate(d, el);
+      grid.appendChild(el);
+    }
+  }
+
+  async function selectDate(day, el){
+    document.querySelectorAll(".day").forEach(x => x.classList.remove("active"));
+    el.classList.add("active");
+    const y = current.getFullYear();
+    const m = String(current.getMonth()+1).padStart(2,"0");
+    const d = String(day).padStart(2,"0");
+    selectedDate = `${y}-${m}-${d}`;
+    await paintTimeSlots();
+  }
+
+  async function paintTimeSlots(){
+    const container = document.getElementById("timeSlots");
+    container.innerHTML = "";
+    // sample schedule (you can adjust)
+    const times = ["08:00","08:30","09:00","09:30","10:00","10:30","11:00","11:30","12:00","12:30","13:00","13:30","14:00","14:30","15:00","15:30","16:00","16:30"];
+    let booked = [];
+    if (selectedDate){
+      const { data } = await supabase.from("crm_events")
+        .select("time,date")
+        .eq("date", selectedDate);
+      booked = (data||[]).map(e => (e.time||"").trim());
+    }
+    times.forEach(t => {
+      const btn = document.createElement("button");
+      btn.className = "slot";
+      btn.textContent = toAMPM(t);
+      // grey out if taken
+      if (booked.includes(t)) btn.classList.add("taken");
+      btn.onclick = () => {
+        if (btn.classList.contains("taken")) return;
+        // preview only – real flow handled in book.html
+        const type = inputs.next_step_type.value;
+        if (type === "form") {
+          const formId = formSelector.value;
+          alert(`Would open form ${formId} for ${selectedDate} ${t}`);
+        } else if (type === "url") {
+          alert(`Would go to ${inputs.next_step_redirect.value}`);
+        } else {
+          alert(`Would go to Thank You page. (ics: ${inputs.show_ics.checked ? 'on' : 'off'})`);
+        }
+      };
+      container.appendChild(btn);
+    });
+  }
+
+  function toAMPM(time){
+    const [H,M] = time.split(":").map(Number);
+    const suf = H>=12 ? "pm" : "am";
+    const h = ((H + 11) % 12) + 1;
+    return `${h}:${String(M).padStart(2,"0")}${suf}`;
+  }
+</script>
+</body>
+</html>

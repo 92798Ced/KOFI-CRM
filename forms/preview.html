@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Form Preview</title>
+  <link rel="stylesheet" href="../styles.css">
+</head>
+<body style="display:flex;justify-content:center;align-items:center;min-height:100vh;background:#0d1017;">
+  <div id="formContainer" class="card" style="max-width:600px;width:90%;padding:2rem;background:rgba(255,255,255,0.1);border-radius:1rem;"></div>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script>
+    const SUPABASE_URL = "https://YOUR_PROJECT.supabase.co";
+    const SUPABASE_KEY = "YOUR_KEY";
+    const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+    const formId = new URLSearchParams(window.location.search).get("id");
+    const container = document.getElementById("formContainer");
+    async function loadForm() {
+      const { data, error } = await supabase.from("forms").select("schema").eq("id", formId).single();
+      if (error) return container.innerHTML = "Form not found.";
+      const schema = data.schema || {};
+      if (schema.background) document.body.style.backgroundImage = schema.background;
+      container.innerHTML = schema.fields.map(f=>{
+        if(f.type==="button") return `<button style="width:100%;padding:.9rem;border:none;border-radius:.6rem;font-weight:600;background:${f.styles.background};color:${f.styles.color}">${f.label}</button>`;
+        if(f.type==="image") return `<img src="${f.src}" style="max-width:100%;border-radius:.5rem;margin-bottom:1rem;">`;
+        if(f.type==="text") return `<p style="margin:.5rem 0;font-size:1rem;">${f.content}</p>`;
+        return `<label>${f.label}</label><input placeholder="${f.placeholder}" style="width:100%;border-radius:.5rem;border:1px solid rgba(255,255,255,0.2);padding:.6rem;margin-bottom:.6rem;">`;
+      }).join("");
+    }
+    loadForm();
+  </script>
+</body>
+</html>

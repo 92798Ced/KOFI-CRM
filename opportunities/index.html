@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Loom CRM — Opportunities</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/styles.css" />
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+
+<body>
+  <header class="app-header">
+    <div class="brand">
+      <span class="brand-mark">◎</span>
+      <div>
+        <h1>Opportunities</h1>
+        <p>Track deals through every stage of your sales pipeline.</p>
+      </div>
+    </div>
+    <div class="header-right">
+      <button id="settingsBtn" class="secondary">⚙️ Settings</button>
+      <button id="addRecordBtn" class="primary">➕ Add Opportunity</button>
+    </div>
+  </header>
+
+  <main class="app forms-page">
+    <section class="dashboard">
+      <div class="forms-header">
+        <div class="view-selector">
+          <button class="view-tab active" id="pipelineViewBtn">📊 Pipeline</button>
+          <button class="view-tab" id="contactsViewBtn">👥 Contact List</button>
+        </div>
+      </div>
+
+      <!-- Pipeline View -->
+      <div id="pipelineView" class="kanban-view">
+        <div class="kanban" id="pipelineBoard"></div>
+      </div>
+
+      <!-- Contact List View -->
+      <div id="contactsView" class="hidden">
+        <table class="contact-table" id="contactTable">
+          <thead>
+            <tr>
+              <th>Name</th>
+              <th>Email</th>
+              <th>Phone</th>
+              <th>Last Activity</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+
+  <footer class="app-footer">
+    <p>© 2025 Loom & Prints — Opportunities Module</p>
+  </footer>
+
+  <!-- Add Opportunity / Contact Modal -->
+  <div id="addOpportunityModal" class="modal hidden">
+    <div class="modal-content form-card">
+      <div class="modal-header">
+        <h2>Add New Opportunity</h2>
+        <button class="close-modal" id="cancelModal">×</button>
+      </div>
+
+      <form id="opportunityForm" class="modal-body">
+        <div id="contactSection" class="form-section">
+          <h3>Contact Details</h3>
+          <label>Primary Contact Name *</label>
+          <div class="contact-select-wrap">
+            <input type="text" id="contactSelectInput" placeholder="Type or select a contact" list="contactSelectList" required />
+            <datalist id="contactSelectList"></datalist>
+          </div>
+
+          <label>Primary Email</label>
+          <input type="email" id="contact_email" />
+
+          <label>Primary Phone</label>
+          <input type="text" id="contact_phone" />
+        </div>
+
+        <div id="opportunityFields" class="form-section">
+          <h3>Opportunity Details</h3>
+          <label>Opportunity Name *</label>
+          <input type="text" id="opportunity_name" required>
+
+          <label>Pipeline</label>
+          <select id="pipeline">
+            <option value="All Leads">All Leads</option>
+          </select>
+
+          <label>Stage</label>
+          <select id="stage"></select>
+
+          <label>Status</label>
+          <select id="status">
+            <option value="Open">Open</option>
+            <option value="Closed">Closed</option>
+          </select>
+
+          <label>Opportunity Value ($)</label>
+          <input type="number" id="value" value="0">
+
+          <label>Business Name</label>
+          <input type="text" id="business_name">
+
+          <label>Opportunity Source</label>
+          <input type="text" id="source">
+        </div>
+
+        <div class="modal-actions">
+          <button type="button" class="secondary" id="cancelModalFooter">Cancel</button>
+          <button type="submit" class="primary">Create</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Pipeline Settings Modal -->
+  <div id="pipelineSettingsModal" class="modal hidden">
+    <div class="modal-content form-card">
+      <div class="modal-header">
+        <h2>Pipeline Settings ⚙️</h2>
+        <button class="close-modal" id="cancelPipelineModal">×</button>
+      </div>
+
+      <form id="pipelineForm" class="modal-body">
+        <label>New Stage Name</label>
+        <input type="text" id="newStage" placeholder="e.g. Contract Sent" required />
+        <div class="modal-actions">
+          <button type="button" class="secondary" id="cancelPipelineFooter">Cancel</button>
+          <button type="submit" class="primary">Add Stage</button>
+        </div>
+      </form>
+
+      <div class="modal-body">
+        <h3>Existing Stages (Drag to Reorder)</h3>
+        <div id="stagesList" class="stages-list"></div>
+      </div>
+    </div>
+  </div>
+
+  <script src="/components/sidebar.js"></script>
+  <script src="/scripts/opportunities.js"></script>
+
+  <style>
+    .view-selector {
+      display: flex;
+      gap: 8px;
+    }
+    .view-tab {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      color: var(--text);
+      border-radius: 8px;
+      padding: 8px 16px;
+      cursor: pointer;
+      transition: 0.2s;
+    }
+    .view-tab.active {
+      background: var(--primary);
+      color: white;
+    }
+    .contact-select-wrap input[list] {
+      color: #000;
+      background-color: #fff;
+    }
+    .stages-list {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      margin-top: 10px;
+    }
+    .stage-item {
+      background: var(--surface-subtle);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 8px 12px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      cursor: grab;
+    }
+    .stage-item.dragging {
+      opacity: 0.6;
+      background: rgba(99, 102, 241, 0.2);
+    }
+  </style>
+</body>
+</html>
