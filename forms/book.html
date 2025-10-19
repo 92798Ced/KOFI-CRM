@@ -227,14 +227,30 @@
       });
     }
 
-    async function bookSlot(time){
-      if (!selectedDate) return alert("Please pick a date first.");
-      const confirmMsg = `Confirm booking on ${selectedDate} at ${time}?`;
-      if (!confirm(confirmMsg)) return;
-      const { error } = await supabase.from("crm_events").insert([{ id: crypto.randomUUID(), date: selectedDate, time }]);
-      if (error) return alert("Booking failed: " + error.message);
-      showThankYou();
+async function bookSlot(time) {
+  if (!selectedDate) return alert("Please pick a date first.");
+  const confirmMsg = `Confirm booking on ${selectedDate} at ${time}?`;
+  if (!confirm(confirmMsg)) return;
+
+  const { error } = await supabase.from("crm_events").insert([
+    {
+      id: crypto.randomUUID(),
+      title: eventData.title || "Appointment",
+      description: eventData.description || "",
+      date: selectedDate,
+      time,
+      duration: eventData.duration || 15,
+      status: "booked",
+      image_url: eventData.image_url || null,
+      theme_color: eventData.theme_color || "#2563eb",
+      created_from: id // reference the original event id
     }
+  ]);
+
+  if (error) return alert("Booking failed: " + error.message);
+  showThankYou();
+}
+
 
     function showThankYou(){
       document.getElementById("calendarContainer").style.display = "none";
