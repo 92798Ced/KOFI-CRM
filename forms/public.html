@@ -97,28 +97,35 @@
     const form = document.createElement("form");
     form.id = "publicForm";
 
+    // build inputs
     fields.forEach((f) => {
       let html = "";
       switch (f.type) {
         case "text":
-          html = `<p style="font-size:${f.styles.fontSize || 16}px;font-weight:${f.styles.fontWeight || "normal"};">${f.content}</p>`;
+          html = `<p style="font-size:${f.styles.fontSize || 16}px;font-weight:${
+            f.styles.fontWeight || "normal"
+          };">${f.content}</p>`;
           break;
         case "image":
           html = `<img src="${f.src}" alt="">`;
           break;
         case "button":
-          html = `<button type="submit" style="background:${f.styles.background || "#111"};color:${f.styles.color || "#fff"}">${f.label}</button>`;
+          html = `<button type="submit" style="background:${
+            f.styles.background || "#111"
+          };color:${f.styles.color || "#fff"}">${f.label}</button>`;
           break;
         default:
           html = `
             <label>${f.label || "Label"}${f.required ? " *" : ""}</label>
             <input
-              name="${f.label?.toLowerCase().replace(/\s+/g, "_") || "field"}"
+              name="${f.label || "Field"}"
               type="${
                 f.type === "email"
                   ? "email"
                   : f.type === "phone"
                   ? "tel"
+                  : f.type === "dob"
+                  ? "date"
                   : "text"
               }"
               placeholder="${f.example || ""}"
@@ -131,38 +138,70 @@
 
     container.appendChild(form);
 
+    // handle submit
     form.addEventListener("submit", async (e) => {
       e.preventDefault();
+      try {
+        const rawEntries = Object.fromEntries(new FormData(form).entries());
+        const lowerKeys = Object.keys(rawEntries).reduce((acc, key) => {
+          acc[key.toLowerCase().trim()] = rawEntries[key].trim();
+          return acc;
+        }, {});
 
-      // Extract fields that match your public.contacts schema
-      const formData = Object.fromEntries(new FormData(form).entries());
-      const contact = {
-        name:
-          formData.full_name ||
-          formData.fullname ||
-          `${formData.first_name || ""} ${formData.last_name || ""}`.trim() ||
-          formData.name ||
-          "Unnamed",
-        email: formData.email || "",
-        phone: formData.phone || ""
-      };
+        // merge first + last name
+        const firstName =
+          lowerKeys["first name"] ||
+          lowerKeys["firstname"] ||
+          lowerKeys["first"];
+        const lastName =
+          lowerKeys["last name"] ||
+          lowerKeys["lastname"] ||
+          lowerKeys["last"];
+        const fullName =
+          lowerKeys["name"] ||
+          `${firstName || ""} ${lastName || ""}`.trim() ||
+          "Unnamed";
 
-      // Insert into public.contacts
-      const { error: insertError } = await supabase
-        .from("contacts")
-        .insert([contact]);
+        const email =
+          lowerKeys["email"] ||
+          lowerKeys["e-mail"] ||
+          lowerKeys["email address"] ||
+          "";
+        const phone =
+          lowerKeys["phone"] ||
+          lowerKeys["phone number"] ||
+          lowerKeys["mobile"] ||
+          "";
 
-      if (insertError) {
-        alert("❌ Failed to submit: " + insertError.message);
-      } else {
-        alert("✅ Form submitted succesfully!");
+        const contact = {
+          name: fullName,
+          email,
+          phone
+        };
+
+        if (!email && !phone && !fullName) {
+          alert("⚠️ Please fill out at least one contact field.");
+          return;
+        }
+
+        const { error: insertError } = await supabase
+          .from("contacts")
+          .insert([contact]);
+
+        if (insertError) throw insertError;
+
+        alert("✅ Form Submitted!");
         form.reset();
+      } catch (err) {
+        console.error("Submit error:", err);
+        alert("❌ Something went wrong: " + err.message);
       }
     });
   }
 
   loadForm();
 </script>
+
 
 </body>
 </html>
