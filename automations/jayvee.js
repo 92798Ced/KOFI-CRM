@@ -1,11 +1,6 @@
-/* jayvee.js — CRM Copilot Assistant (visual workflow builder, full version)
-   Author: Gav x ChatGPT
-   Features:
-   - Floating chat bubble (above zoom)
-   - Random greetings
-   - GPT-4o-mini powered workflow builder
-   - JSON auto-extraction + fallback
-   - Visual refresh + optional action expansion
+/* jayvee.js — Frontend (Netlify Secure + Full Automation Schema)
+   Uses /.netlify/functions/jayvee as backend proxy
+   Keeps your OpenAI key hidden in Netlify env
 */
 
 class JayveeAssistant {
@@ -32,9 +27,9 @@ class JayveeAssistant {
     return desc;
   }
 
-  /* 🧠 Create simple action manually */
+  /* 🔧 Add simple fallback action */
   async createAutomation(instruction) {
-    const { workflow, renderFlow, iconFor, showToast } = this.ctx;
+    const { workflow, iconFor, showToast } = this.ctx;
     const id = "a_" + Date.now() + "_" + Math.floor(Math.random() * 9999);
     const key = "send_email";
     const action = {
@@ -47,22 +42,21 @@ class JayveeAssistant {
     workflow.actions.push(action);
     this.refreshCanvas();
     showToast?.();
-    console.log(`${this.name} created automation step from: "${instruction}"`);
   }
 
-  /* 🔘 Set a trigger */
+  /* 🔘 Set trigger manually */
   async setTrigger(label) {
     const { workflow, iconForTrigger } = this.ctx;
     workflow.trigger = { key: "form_submitted", label, icon: iconForTrigger(), config: {} };
     this.refreshCanvas();
-    console.log(`${this.name} set trigger: ${label}`);
   }
 
-  /* ⚙️ Main GPT-based builder */
+  /* ⚙️ Main GPT-based automation builder (via Netlify Function) */
   async generateAutomationFromText(prompt) {
-  const API_KEY = "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"; // replace with your key
-
+    // Jayvee prompt context — mirrors your editor schema
     const editorContext = `
+You are Jayvee, an automation builder for a CRM system.
+
 Available triggers:
 form_submitted, contact_created, contact_changed, birthday, webhook_in,
 scheduler, email_events, customer_replied, survey_submitted, trigger_link
@@ -72,41 +66,42 @@ send_email, send_sms, call, voicemail, slack, messenger, instagram_dm, wait,
 add_tag, remove_tag, if_else, goal, split, goto, create_contact, find_contact,
 update_field, assign_user, remove_assigned, toggle_dnd, add_note
 
-Output ONLY JSON like:
+Return ONLY valid JSON that matches this structure:
 {
-  "trigger": {"key": "form_submitted", "label": "Form Submitted"},
+  "trigger": {
+    "key": "form_submitted",
+    "label": "Form Submitted",
+    "config": {}
+  },
   "actions": [
-    {"key": "send_email", "label": "Send Email",
-      "config": {"subject":"Welcome!","body":"Hi there!"}},
-    {"key":"wait","label":"Wait 1 Day",
-      "config":{"duration":"1","unit":"days"}},
-    {"key":"add_tag","label":"Add Contact Tag",
-      "config":{"tag":"Lead"}}
+    {
+      "key": "send_email",
+      "label": "Send Email",
+      "config": {"subject": "Welcome!", "body": "Thanks for joining!"}
+    },
+    {
+      "key": "wait",
+      "label": "Wait 1 Day",
+      "config": {"duration": "1", "unit": "days"}
+    },
+    {
+      "key": "add_tag",
+      "label": "Add Contact Tag",
+      "config": {"tag": "Lead"}
+    }
   ]
 }`;
 
-    // --- GPT request ---
-    const res = await fetch("https://api.openai.com/v1/chat/completions", {
+    const res = await fetch("/.netlify/functions/jayvee", {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": `Bearer ${API_KEY}`
-      },
-      body: JSON.stringify({
-        model: "gpt-4o-mini",
-        messages: [
-          { role: "system", content: "You are Jayvee, an automation builder that returns pure JSON using the editor schema." },
-          { role: "user", content: editorContext },
-          { role: "user", content: prompt }
-        ],
-        temperature: 0.4
-      })
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ prompt: `${editorContext}\n\nUser request: ${prompt}` })
     });
 
     const data = await res.json();
     let text = data?.choices?.[0]?.message?.content || "{}";
 
-    // --- Extract JSON safely ---
+    // Extract JSON even if GPT returns extra text
     const match = text.match(/\{[\s\S]*\}/);
     if (match) text = match[0];
 
@@ -114,22 +109,17 @@ Output ONLY JSON like:
     try {
       plan = JSON.parse(text);
     } catch {
-      console.warn("⚠️ GPT returned invalid JSON, fallback used.", text);
+      console.warn("⚠️ GPT returned invalid JSON, using fallback.", text);
       plan = {
         trigger: { key: "form_submitted", label: "Form Submitted" },
         actions: [
-          {
-            key: "send_email",
-            label: "Send Email",
-            config: { subject: "Auto Message", body: prompt }
-          }
+          { key: "send_email", label: "Send Email", config: { subject: "Auto", body: prompt } }
         ]
       };
     }
 
-    // --- Apply to workflow ---
+    // --- Apply plan ---
     const { workflow, iconFor, iconForTrigger } = this.ctx;
-
     workflow.trigger = {
       key: plan.trigger?.key || "form_submitted",
       label: plan.trigger?.label || "Form Submitted",
@@ -139,13 +129,7 @@ Output ONLY JSON like:
 
     const actions = Array.isArray(plan.actions) && plan.actions.length
       ? plan.actions
-      : [
-          {
-            key: "send_email",
-            label: "Send Email",
-            config: { subject: "Welcome!", body: "Thanks for signing up!" }
-          }
-        ];
+      : [{ key: "send_email", label: "Send Email", config: { subject: "Welcome!", body: "Hi!" } }];
 
     workflow.actions = actions.map(a => ({
       id: "a_" + Date.now() + "_" + Math.floor(Math.random() * 9999),
@@ -155,10 +139,8 @@ Output ONLY JSON like:
       config: a.config || {}
     }));
 
-    // --- Visually rebuild ---
     this.refreshCanvas();
 
-    // optional: auto-expand first node
     if (window.openActionDrawer && workflow.actions[0]) {
       setTimeout(() => window.openActionDrawer(workflow.actions[0].id), 800);
     }
@@ -179,11 +161,8 @@ and ${workflow.actions.length} action${workflow.actions.length !== 1 ? "s" : ""}
   }
 }
 
-/* ---------- 💬 Chat Bubble + GPT UI ---------- */
+/* ---------- 💬 Chat UI ---------- */
 document.addEventListener("DOMContentLoaded", () => {
-  const API_KEY = "sk-YOUR_OPENAI_API_KEY_HERE"; // replace with your key
-
-  /* --- Elements --- */
   const bubble = document.createElement("div");
   bubble.id = "jayveeBubble";
   bubble.innerHTML = "💬";
@@ -201,25 +180,20 @@ document.addEventListener("DOMContentLoaded", () => {
   `;
   document.body.appendChild(chat);
 
-  /* --- Styles --- */
   const style = document.createElement("style");
   style.textContent = `
     #jayveeBubble {
-      position: fixed;
-      bottom: 100px; left: 25px;
+      position: fixed; bottom: 100px; left: 25px;
       background: #4f46e5; color: #fff;
-      width: 60px; height: 60px;
-      border-radius: 50%;
+      width: 60px; height: 60px; border-radius: 50%;
       display: flex; align-items: center; justify-content: center;
       font-size: 26px; cursor: pointer;
       box-shadow: 0 6px 18px rgba(0,0,0,.25);
       z-index: 9999; transition: transform .2s;
     }
     #jayveeBubble:hover { transform: scale(1.1); }
-
     #jayveeChat {
-      position: fixed;
-      bottom: 180px; left: 25px;
+      position: fixed; bottom: 180px; left: 25px;
       width: 340px; height: 460px;
       background: #fff; border-radius: 16px;
       box-shadow: 0 10px 24px rgba(0,0,0,.2);
@@ -227,67 +201,17 @@ document.addEventListener("DOMContentLoaded", () => {
       overflow: hidden; z-index: 9999;
       font-family: Inter, system-ui, sans-serif;
     }
-
-    .jayvee-header {
-      background: #4f46e5; color: #fff;
-      padding: 10px 14px;
-      font-weight: 700;
-      font-size: .95rem;
-    }
-
-    .jayvee-messages {
-      flex: 1; padding: 14px;
-      overflow-y: auto;
-      font-size: .9rem; color: #111827;
-      display: flex; flex-direction: column; gap: 8px;
-      line-height: 1.45;
-    }
-
-    .jayvee-input {
-      display: flex;
-      border-top: 1px solid #e5e7eb;
-    }
-
-    .jayvee-input input {
-      flex: 1;
-      border: none;
-      outline: none;
-      padding: 12px;
-      font-size: .9rem;
-    }
-
-    .jayvee-input button {
-      border: none;
-      background: #4f46e5;
-      color: #fff;
-      padding: 0 14px;
-      cursor: pointer;
-      font-weight: bold;
-    }
-
-    .jayvee-msg {
-      margin-bottom: 6px;
-      line-height: 1.4;
-      white-space: pre-wrap;
-    }
-
-    .jayvee-msg.you {
-      text-align: right; color: #4f46e5; padding-left: 30px;
-    }
-
-    .jayvee-msg.ai {
-      text-align: left;
-      background:#f3f4f6;
-      border-radius:10px;
-      padding:8px 12px;
-      display:inline-block;
-      max-width:80%;
-      word-wrap:break-word;
-    }
+    .jayvee-header { background: #4f46e5; color: #fff; padding: 10px 14px; font-weight: 700; font-size: .95rem; }
+    .jayvee-messages { flex: 1; padding: 14px; overflow-y: auto; font-size: .9rem; color: #111827; display: flex; flex-direction: column; gap: 8px; line-height: 1.45; }
+    .jayvee-input { display: flex; border-top: 1px solid #e5e7eb; }
+    .jayvee-input input { flex: 1; border: none; outline: none; padding: 12px; font-size: .9rem; }
+    .jayvee-input button { border: none; background: #4f46e5; color: #fff; padding: 0 14px; cursor: pointer; font-weight: bold; }
+    .jayvee-msg { margin-bottom: 6px; line-height: 1.4; white-space: pre-wrap; }
+    .jayvee-msg.you { text-align: right; color: #4f46e5; padding-left: 30px; }
+    .jayvee-msg.ai { text-align: left; background:#f3f4f6; border-radius:10px; padding:8px 12px; display:inline-block; max-width:80%; word-wrap:break-word; }
   `;
   document.head.appendChild(style);
 
-  /* --- Chat Logic --- */
   const msgs = chat.querySelector(".jayvee-messages");
   const input = chat.querySelector("input");
   const sendBtn = chat.querySelector("button");
@@ -349,34 +273,18 @@ document.addEventListener("DOMContentLoaded", () => {
         return;
       }
 
-      const reply = await fetchChatGPT(text);
+      // fallback to plain conversation
+      const reply = await fetch("/.netlify/functions/jayvee", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ prompt: text })
+      });
+      const data = await reply.json();
       thinking.remove();
-      appendMsg("ai", reply);
-
+      appendMsg("ai", data?.choices?.[0]?.message?.content?.trim() || "Hmm, no response right now.");
     } catch (err) {
       thinking.textContent = "⚠️ Error connecting to AI.";
       console.error(err);
     }
-  }
-
-  async function fetchChatGPT(message) {
-    const response = await fetch("https://api.openai.com/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": `Bearer ${API_KEY}`
-      },
-      body: JSON.stringify({
-        model: "gpt-4o-mini",
-        messages: [
-          { role: "system", content: "You are Jayvee, a friendly CRM assistant. Keep replies short and practical." },
-          { role: "user", content: message }
-        ],
-        temperature: 0.8
-      })
-    });
-
-    const data = await response.json();
-    return data?.choices?.[0]?.message?.content?.trim() || "Hmm, no response right now.";
   }
 });

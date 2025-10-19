@@ -1,0 +1,34 @@
+# ────────────────────────────────────────────────
+# 🧠 Netlify configuration for Jayvee CRM Assistant
+# - Serves your HTML front-end
+# - Routes /functions requests to /.netlify/functions/
+# - Automatically injects environment variables (OPENAI_API_KEY)
+# - Works both locally and in production
+# ────────────────────────────────────────────────
+
+[build]
+  # Your site build directory — adjust if needed
+  publish = "public"
+  # Optional: specify a framework build command (leave blank for static)
+  command = ""
+
+  # Where Netlify will look for your serverless functions
+  functions = "netlify/functions"
+
+# ────────────────────────────────────────────────
+# ✅ Redirect API calls to serverless function
+# This allows `fetch("/.netlify/functions/jayvee")` to work locally and live
+# ────────────────────────────────────────────────
+[[redirects]]
+  from = "/.netlify/functions/*"
+  to = "/.netlify/functions/:splat"
+  status = 200
+
+# ────────────────────────────────────────────────
+# 🔧 Local environment setup for netlify dev
+# These variables will be used automatically when you run `netlify dev`
+# (You can also add them in the Netlify Dashboard > Environment Variables)
+# ────────────────────────────────────────────────
+[build.environment]
+  NODE_VERSION = "18"
+  OPENAI_API_KEY = "sk-your-local-test-key" # optional for local dev; remove in production commits
