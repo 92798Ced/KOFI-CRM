@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Book Appointment | Megalo Construction</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+  <style>
+    :root { --accent:#2563eb; }
+    body {
+      font-family: "Inter", sans-serif;
+      background: #f9fafb;
+      margin: 0;
+      padding: 0;
+      color: #111827;
+      display: flex;
+      flex-direction: column;
+      min-height: 100vh;
+    }
+
+    header {
+      text-align: center;
+      padding: 2rem 1rem 1rem;
+    }
+
+    header img {
+      width: 100px;
+      height: 100px;
+      object-fit: cover;
+      border-radius: 12px;
+      background: #f3f4f6;
+      margin-bottom: 1rem;
+    }
+
+    h1 { margin: 0; font-size: 1.75rem; }
+    p.muted { color: #4b5563; margin: .25rem 0 1.25rem; }
+
+    main {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 1rem;
+    }
+
+    .calendar {
+      background: #fff;
+      border: 1px solid #e5e7eb;
+      border-radius: 12px;
+      padding: 1.5rem;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.05);
+      width: min(650px, 92vw);
+    }
+
+    .calhdr {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 1rem;
+    }
+    .calhdr button {
+      border: 1px solid #d1d5db;
+      border-radius: 8px;
+      background: #fff;
+      padding: .4rem .75rem;
+      cursor: pointer;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      gap: .35rem;
+      margin-bottom: 1rem;
+    }
+    .day {
+      padding: .5rem 0;
+      text-align: center;
+      border-radius: 8px;
+      cursor: pointer;
+    }
+    .day:hover { background: #e0e7ff; }
+    .day.active { background: var(--accent); color: #fff; }
+
+    .slots {
+      display: flex;
+      flex-direction: column;
+      gap: .5rem;
+    }
+    .slot {
+      border: 1px solid var(--accent);
+      color: var(--accent);
+      background: #eff6ff;
+      padding: .6rem;
+      border-radius: 8px;
+      text-align: center;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    .slot.taken {
+      background: #e5e7eb;
+      border-color: #d1d5db;
+      color: #9ca3af;
+      cursor: not-allowed;
+    }
+
+    .ty {
+      text-align: center;
+      padding: 3rem 1rem;
+    }
+    .ty h2 { color: var(--accent); margin-bottom: .75rem; }
+  </style>
+</head>
+<body>
+  <header id="header">
+    <img id="headerImg" alt="Scheduler image" />
+    <h1 id="title">Loading...</h1>
+    <p class="muted" id="description"></p>
+  </header>
+
+  <main>
+    <div id="calendarContainer" class="calendar">
+      <div class="calhdr">
+        <button id="prevMonth">‹</button>
+        <h3 id="monthLabel"></h3>
+        <button id="nextMonth">›</button>
+      </div>
+      <div id="calendarGrid" class="grid"></div>
+      <div id="timeSlots" class="slots"></div>
+    </div>
+
+    <div id="thankyou" class="ty" style="display:none;">
+      <h2 id="tyTitle">Thank you for booking!</h2>
+      <p id="tyMsg">Our team will contact you soon to confirm your schedule.</p>
+      <button id="icsBtn" style="display:none;" class="slot" onclick="downloadICS()">📅 Add to Calendar (.ics)</button>
+    </div>
+  </main>
+
+  <script>
+    const SUPABASE_URL = "https://usopxhshfmmtnnvkzelj.supabase.co";
+    const SUPABASE_ANON_KEY =
+      "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVzb3B4aHNoZm1tdG5udmt6ZWxqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjA4MTc2MzIsImV4cCI6MjA3NjM5MzYzMn0.3qG3t-QTc6UsRt74GXjL_pBVfibG42X5wGyWRLYu3NE";
+    const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+    const params = new URLSearchParams(window.location.search);
+    const id = params.get("id");
+
+    let eventData = null;
+    let current = new Date();
+    let selectedDate = null;
+
+    // Load CRM Event (scheduler info)
+    async function loadEvent() {
+      const { data, error } = await supabase.from("crm_events").select("*").eq("id", id).single();
+      if (error || !data) {
+        document.body.innerHTML = "<h2 style='text-align:center;padding:3rem;'>❌ Scheduler not found.</h2>";
+        return;
+      }
+      eventData = data;
+      document.documentElement.style.setProperty("--accent", data.theme_color || "#2563eb");
+      document.getElementById("title").textContent = data.title || "Book Appointment";
+      document.getElementById("description").textContent = data.description || "";
+      document.getElementById("headerImg").src = data.image_url || "/assets/default-calendar.jpg";
+      paintCalendar();
+    }
+
+    // Calendar rendering
+    function paintCalendar() {
+      const monthNames = ["January","February","March","April","May","June","July","August","September","October","November","December"];
+      document.getElementById("monthLabel").textContent = `${monthNames[current.getMonth()]} ${current.getFullYear()}`;
+
+      const grid = document.getElementById("calendarGrid");
+      grid.innerHTML = "";
+      const first = new Date(current.getFullYear(), current.getMonth(), 1).getDay();
+      const days = new Date(current.getFullYear(), current.getMonth()+1, 0).getDate();
+
+      for(let i=0;i<first;i++) grid.appendChild(document.createElement("div"));
+      for(let d=1; d<=days; d++){
+        const el = document.createElement("div");
+        el.className = "day";
+        el.textContent = d;
+        el.onclick = () => selectDate(d, el);
+        grid.appendChild(el);
+      }
+
+      document.getElementById("prevMonth").onclick = ()=>{ current.setMonth(current.getMonth()-1); paintCalendar(); };
+      document.getElementById("nextMonth").onclick = ()=>{ current.setMonth(current.getMonth()+1); paintCalendar(); };
+    }
+
+    function toAMPM(time){
+      const [H,M] = time.split(":").map(Number);
+      const suf = H>=12 ? "pm" : "am";
+      const h = ((H + 11) % 12) + 1;
+      return `${h}:${String(M).padStart(2,"0")}${suf}`;
+    }
+
+    async function selectDate(day, el){
+      document.querySelectorAll(".day").forEach(x => x.classList.remove("active"));
+      el.classList.add("active");
+      const y = current.getFullYear();
+      const m = String(current.getMonth()+1).padStart(2,"0");
+      const d = String(day).padStart(2,"0");
+      selectedDate = `${y}-${m}-${d}`;
+      await paintTimeSlots();
+    }
+
+    async function paintTimeSlots(){
+      const container = document.getElementById("timeSlots");
+      container.innerHTML = "";
+      const times = ["08:00","08:30","09:00","09:30","10:00","10:30","11:00","11:30","12:00","13:00","13:30","14:00","14:30","15:00","15:30","16:00"];
+      let booked = [];
+      if (selectedDate){
+        const { data } = await supabase.from("crm_events").select("time,date").eq("date", selectedDate);
+        booked = (data||[]).map(e => (e.time||"").trim());
+      }
+      times.forEach(t => {
+        const btn = document.createElement("button");
+        btn.className = "slot";
+        btn.textContent = toAMPM(t);
+        if (booked.includes(t)) btn.classList.add("taken");
+        btn.onclick = () => {
+          if (btn.classList.contains("taken")) return;
+          bookSlot(t);
+        };
+        container.appendChild(btn);
+      });
+    }
+
+    async function bookSlot(time){
+      if (!selectedDate) return alert("Please pick a date first.");
+      const confirmMsg = `Confirm booking on ${selectedDate} at ${time}?`;
+      if (!confirm(confirmMsg)) return;
+      const { error } = await supabase.from("crm_events").insert([{ id: crypto.randomUUID(), date: selectedDate, time }]);
+      if (error) return alert("Booking failed: " + error.message);
+      showThankYou();
+    }
+
+    function showThankYou(){
+      document.getElementById("calendarContainer").style.display = "none";
+      const ty = document.getElementById("thankyou");
+      ty.style.display = "block";
+      document.getElementById("tyTitle").textContent = eventData.thankyou_message || "Thank you for booking!";
+      if (eventData.show_ics) document.getElementById("icsBtn").style.display = "inline-block";
+    }
+
+    function downloadICS(){
+      const blob = new Blob([
+        "BEGIN:VCALENDAR\nVERSION:2.0\nBEGIN:VEVENT\nSUMMARY:Megalo Construction Appointment\nDTSTART:"+selectedDate.replace(/-/g,"")+"T090000Z\nDTEND:"+selectedDate.replace(/-/g,"")+"T100000Z\nEND:VEVENT\nEND:VCALENDAR"
+      ], {type: "text/calendar"});
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(blob);
+      a.download = "appointment.ics";
+      a.click();
+    }
+
+    loadEvent();
+  </script>
+</body>
+</html>
