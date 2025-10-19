@@ -93,6 +93,9 @@
     .toast.show{opacity:1;transform:translateY(0)}
   </style>
 </head>
+if (!localStorage.getItem("OPENAI_API_KEY")) {
+  console.warn("⚠️ No OpenAI API key found. Run this in console: localStorage.setItem('OPENAI_API_KEY','sk-yourkey')");
+}
 <body>
   <!-- Top bar -->
   <div class="topbar">
@@ -713,5 +716,17 @@
       renderFlow();
     })();
   </script>
+  
+<script src="jayvee.js"></script>
+<script>
+  window.jayvee = new JayveeAssistant({
+    workflow,
+    renderFlow,
+    hydrateTriggerUI,
+    iconFor,
+    iconForTrigger,
+    showToast
+  });
+</script>
 </body>
 </html>
