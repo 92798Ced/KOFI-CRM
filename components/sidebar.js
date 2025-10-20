@@ -8,7 +8,7 @@ function loadSidebar(activePage = "") {
   const html = `
   <nav id="sidebar" class="sidebar">
     <div class="sidebar-header">
-      <h2>Loom CRM</h2>
+      <h2>KOFI CRM</h2>
       <button id="closeSidebar">×</button>
     </div>
     <ul class="sidebar-menu">
@@ -56,3 +56,4 @@ function loadSidebar(activePage = "") {
   closeBtn.addEventListener("click", closeSidebarFn);
   overlay.addEventListener("click", closeSidebarFn);
 }
+
