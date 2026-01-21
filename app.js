@@ -150,3 +150,66 @@ document.addEventListener("DOMContentLoaded", async () => {
     console.error("App init error:", err);
   }
 });
+
+
+// ===============================
+// SESSION IDLE SECURITY
+// ===============================
+
+const INACTIVITY_LIMIT = 60_000; // 1 minute
+const CONFIRM_LIMIT = 30;        // 30 seconds
+
+let idleTimer;
+let countdownTimer;
+let countdown = CONFIRM_LIMIT;
+
+// Supabase client already exists in app.js
+// const supabase = ...
+
+function resetIdleTimer() {
+  clearTimeout(idleTimer);
+  idleTimer = setTimeout(showIdleWarning, INACTIVITY_LIMIT);
+}
+
+function showIdleWarning() {
+  const modal = document.getElementById("idleModal");
+  const counter = document.getElementById("idleCounter");
+
+  if (!modal || !counter) {
+    forceLogout();
+    return;
+  }
+
+  modal.style.display = "flex";
+  countdown = CONFIRM_LIMIT;
+  counter.textContent = countdown;
+
+  countdownTimer = setInterval(() => {
+    countdown--;
+    counter.textContent = countdown;
+
+    if (countdown <= 0) {
+      clearInterval(countdownTimer);
+      forceLogout();
+    }
+  }, 1000);
+}
+
+async function forceLogout() {
+  await supabase.auth.signOut();
+  window.location.href = "/login.html";
+}
+
+function stayLoggedIn() {
+  clearInterval(countdownTimer);
+  document.getElementById("idleModal").style.display = "none";
+  resetIdleTimer();
+}
+
+// Track user activity
+["mousemove", "keydown", "click", "scroll", "touchstart"].forEach(event =>
+  window.addEventListener(event, resetIdleTimer, { passive: true })
+);
+
+// Start tracking
+resetIdleTimer();
