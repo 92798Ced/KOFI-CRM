@@ -213,8 +213,6 @@ function stayLoggedIn() {
 
 // Start tracking
 resetIdleTimer();
-
-
 function validatePassword(password) {
   if (password.length < 8) {
     return "Password must be at least 8 characters long.";
@@ -226,3 +224,10 @@ function validatePassword(password) {
 
   return null;
 }
+
+const error = validatePassword(password);
+if (error) {
+  alert(error);
+  return;
+}
+
