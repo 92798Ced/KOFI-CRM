@@ -3,8 +3,8 @@
    ========================================================= */
 
 // ========== GLOBAL STATE ==========
-const SUPABASE_URL = "https://usopxhshfmmtnnvkzelj.supabase.co";
-const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVzb3B4aHNoZm1tdG5udmt6ZWxqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjA4MTc2MzIsImV4cCI6MjA3NjM5MzYzMn0.3qG3t-QTc6UsRt74GXjL_pBVfibG42X5wGyWRLYu3NE";
+const SUPABASE_URL = "https://bvjgyizumizvmrzaqqme.supabase.co";
+const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJ2amd5aXp1bWl6dm1yemFxcW1lIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjkwMDcwMDMsImV4cCI6MjA4NDU4MzAwM30.UuSXijxTbSHfqMcLi-S21w9wna2qlp2czDDVNxgVFm4";
 const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 // Utility delay
