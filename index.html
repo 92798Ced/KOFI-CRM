@@ -12,6 +12,42 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 
+  <style>
+#idleModal {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,.6);
+  display: none;
+  justify-content: center;
+  align-items: center;
+  z-index: 9999;
+}
+#idleModal .box {
+  background: #fff;
+  padding: 20px;
+  border-radius: 12px;
+  width: 380px;
+}
+#idleModal .actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 15px;
+}
+</style>
+
+<div id="idleModal">
+  <div class="box">
+    <h3>Session Expiring</h3>
+    <p>You will be logged out in <b id="idleCounter">30</b> seconds.</p>
+    <div class="actions">
+      <button onclick="forceLogout()">Logout</button>
+      <button onclick="stayLoggedIn()">Stay Logged In</button>
+    </div>
+  </div>
+</div>
+
+
 <body>
   <!-- Sidebar / Hamburger -->
   <nav id="sidebar" class="sidebar hidden"></nav>
