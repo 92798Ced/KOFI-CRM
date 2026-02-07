@@ -2,12 +2,12 @@
 // Loom CRM — Opportunities + Contacts Unified Module
 // Includes: drag reorder, search/sort, hybrid modal, autofill, Supabase CRUD
 
-const SUPABASE_URL = "https://zxhbbzjxxwdpafpjcmli.supabase.co";
-const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inp4aGJiemp4eHdkcGFmcGpjbWxpIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3MDQ3MzA4NCwiZXhwIjoyMDg2MDQ5MDg0fQ.71lWN8jU7fNbbgrG_NbWCvx4K4Y6VHeSuS60_wtMhwQ";
-
-const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+// Supabase client is initialized in /config/supabase.js as window.sb
+const supabase = window.sb;
 
 document.addEventListener("DOMContentLoaded", async () => {
+  const session = await requireAuth();
+  if (!session) return;
   loadSidebar("opportunities");
 
   const modal = document.getElementById("addOpportunityModal");
@@ -440,4 +440,3 @@ document.addEventListener("DOMContentLoaded", async () => {
     setupSort();
   });
 });
-

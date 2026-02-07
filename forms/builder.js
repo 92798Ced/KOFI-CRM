@@ -1,9 +1,8 @@
 /* =========================
    SUPABASE SETUP
 ========================= */
-const SUPABASE_URL = "https://zxhbbzjxxwdpafpjcmli.supabase.co";
-const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inp4aGJiemp4eHdkcGFmcGpjbWxpIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3MDQ3MzA4NCwiZXhwIjoyMDg2MDQ5MDg0fQ.71lWN8jU7fNbbgrG_NbWCvx4K4Y6VHeSuS60_wtMhwQ";
-const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+// Supabase client is initialized in /config/supabase.js as window.sb
+const supabase = window.sb;
 
 let lastSavedState = "";
 let autoSaveTimeout = null;
@@ -647,5 +646,4 @@ function showLeaveModal() {
     m.remove();
     window.location.href = "index.html";
   };
-
 }

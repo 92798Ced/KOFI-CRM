@@ -6,6 +6,8 @@
 <title>Calendar Editor</title>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="/config/supabase.js"></script>
+<script src="/scripts/auth.js"></script>
 <style>
   :root { --accent:#2563eb; }
   *{box-sizing:border-box}
@@ -187,10 +189,12 @@
   </div>
 
 <script>
+(async () => {
+  const session = await requireAuth();
+  if (!session) return;
+
   /* --- Supabase --- */
-  const SUPABASE_URL = "https://zxhbbzjxxwdpafpjcmli.supabase.co";
-  const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inp4aGJiemp4eHdkcGFmcGpjbWxpIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3MDQ3MzA4NCwiZXhwIjoyMDg2MDQ5MDg0fQ.71lWN8jU7fNbbgrG_NbWCvx4K4Y6VHeSuS60_wtMhwQ";
-  const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+  const supabase = window.sb;
   const params = new URLSearchParams(window.location.search);
   const id = params.get("id");
 
@@ -451,7 +455,8 @@ inputs.next_step_type.addEventListener("change", () => {
     const h = ((H + 11) % 12) + 1;
     return `${h}:${String(M).padStart(2,"0")}${suf}`;
   }
+
+})();
 </script>
 </body>
 </html>
-

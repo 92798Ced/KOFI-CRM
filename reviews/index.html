@@ -122,10 +122,17 @@
 
   <footer class="app-footer"><p>© 2025 KOFI CRM — Reviews Module</p></footer>
 
+  <!-- Supabase (shared) -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="/config/supabase.js"></script>
+  <script src="/scripts/auth.js"></script>
+
   <!-- Shared Sidebar -->
   <script src="/components/sidebar.js"></script>
   <script>
-    document.addEventListener("DOMContentLoaded", () => {
+    document.addEventListener("DOMContentLoaded", async () => {
+      const session = await requireAuth();
+      if (!session) return;
       loadSidebar("reviews");
     });
   </script>

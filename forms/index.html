@@ -7,6 +7,8 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="/styles.css" />
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="/config/supabase.js"></script>
+  <script src="/scripts/auth.js"></script>
 </head>
 
 <body>
@@ -82,11 +84,11 @@
 
 <script src="/components/sidebar.js"></script>
 <script>
-const SUPABASE_URL = "https://zxhbbzjxxwdpafpjcmli.supabase.co";
-const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inp4aGJiemp4eHdkcGFmcGpjbWxpIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3MDQ3MzA4NCwiZXhwIjoyMDg2MDQ5MDg0fQ.71lWN8jU7fNbbgrG_NbWCvx4K4Y6VHeSuS60_wtMhwQ";
-const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+	const supabase = window.sb;
 
 document.addEventListener("DOMContentLoaded", async () => {
+  const session = await requireAuth();
+  if (!session) return;
   loadSidebar("forms");
 
   const formsBoard = document.getElementById("formsBoard");
@@ -348,4 +350,3 @@ formForm.onsubmit = async (e) => {
 </style>
 </body>
 </html>
-
