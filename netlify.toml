@@ -2,3 +2,39 @@
   publish = "."
   functions = "netlify/functions"
 
+# Pretty-route support (avoid 404 when users visit /login, /forms, etc.)
+[[redirect]]
+  from = "/login"
+  to = "/login.html"
+  status = 200
+
+[[redirect]]
+  from = "/dashboard"
+  to = "/index.html"
+  status = 200
+
+[[redirect]]
+  from = "/forms"
+  to = "/forms/index.html"
+  status = 200
+
+[[redirect]]
+  from = "/opportunities"
+  to = "/opportunities/index.html"
+  status = 200
+
+[[redirect]]
+  from = "/reviews"
+  to = "/reviews/index.html"
+  status = 200
+
+[[redirect]]
+  from = "/automations"
+  to = "/automations/index.html"
+  status = 200
+
+[[redirect]]
+  from = "/automations/editor"
+  to = "/automations/editor.html"
+  status = 200
+

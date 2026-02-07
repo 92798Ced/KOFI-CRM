@@ -133,6 +133,10 @@
 
   <!-- Sidebar script -->
   <script src="/components/sidebar.js"></script>
+  <!-- Supabase (shared) -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="/config/supabase.js"></script>
+  <script src="/scripts/auth.js"></script>
 
   <!-- Modals & Toasts -->
   <div id="eventModal" class="modal hidden"></div>
@@ -141,25 +145,20 @@
 
   <script>
     /* ---------- Setup ---------- */
-    const SUPABASE_URL = "https://zxhbbzjxxwdpafpjcmli.supabase.co";
-    const SUPABASE_ANON_KEY =
-      "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inp4aGJiemp4eHdkcGFmcGpjbWxpIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3MDQ3MzA4NCwiZXhwIjoyMDg2MDQ5MDg0fQ.71lWN8jU7fNbbgrG_NbWCvx4K4Y6VHeSuS60_wtMhwQ";
-    const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    const supabase = window.sb;
     const $ = (s) => document.querySelector(s);
 
     /* ---------- Auth ---------- */
-    async function ensureSession() {
-      const stored = localStorage.getItem("loom_user");
-      if (!stored) return (window.location.href = "login.html");
-      let user; try { user = JSON.parse(stored); } catch { localStorage.removeItem("loom_user"); window.location.href = "login.html"; return; }
-      const { data, error } = await supabase.from("crm_users").select("full_name").eq("username", user.username).maybeSingle();
-      if (error || !data) return (window.location.href = "login.html");
-      $("#userWelcome").textContent = `Welcome, ${data.full_name}`;
-    }
-    $("#logoutBtn").addEventListener("click", () => { localStorage.removeItem("loom_user"); window.location.href = "login.html"; });
+    $("#logoutBtn").addEventListener("click", () => signOutAndRedirect());
 
     /* ---------- Sidebar ---------- */
-    document.addEventListener("DOMContentLoaded", () => {
+    document.addEventListener("DOMContentLoaded", async () => {
+      const session = await requireAuth();
+      if (!session) return;
+
+      // Basic welcome label
+      $("#userWelcome").textContent = `Welcome, ${session.user.email}`;
+
       if (window.loadSidebar) loadSidebar("dashboard");
       const hb = $("#hamburger"), sb = $("#sidebar"), ov = $("#sidebarOverlay");
       hb.onclick = () => { sb.classList.toggle("show"); ov.classList.toggle("show"); };
