@@ -3,8 +3,8 @@
    ========================================================= */
 
 // ========== GLOBAL STATE ==========
-const SUPABASE_URL = "https://bvjgyizumizvmrzaqqme.supabase.co";
-const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJ2amd5aXp1bWl6dm1yemFxcW1lIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjkwMDcwMDMsImV4cCI6MjA4NDU4MzAwM30.UuSXijxTbSHfqMcLi-S21w9wna2qlp2czDDVNxgVFm4";
+const SUPABASE_URL = "https://usopxhshfmmtnnvkzelj.supabase.co";
+const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVzb3B4aHNoZm1tdG5udmt6ZWxqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjA4MTc2MzIsImV4cCI6MjA3NjM5MzYzMn0.3qG3t-QTc6UsRt74GXjL_pBVfibG42X5wGyWRLYu3NE";
 const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 // Utility delay
@@ -150,84 +150,3 @@ document.addEventListener("DOMContentLoaded", async () => {
     console.error("App init error:", err);
   }
 });
-
-
-// ===============================
-// SESSION IDLE SECURITY
-// ===============================
-
-const INACTIVITY_LIMIT = 60_000; // 1 minute
-const CONFIRM_LIMIT = 30;        // 30 seconds
-
-let idleTimer;
-let countdownTimer;
-let countdown = CONFIRM_LIMIT;
-
-// Supabase client already exists in app.js
-// const supabase = ...
-
-function resetIdleTimer() {
-  clearTimeout(idleTimer);
-  idleTimer = setTimeout(showIdleWarning, INACTIVITY_LIMIT);
-}
-
-function showIdleWarning() {
-  const modal = document.getElementById("idleModal");
-  const counter = document.getElementById("idleCounter");
-
-  if (!modal || !counter) {
-    forceLogout();
-    return;
-  }
-
-  modal.style.display = "flex";
-  countdown = CONFIRM_LIMIT;
-  counter.textContent = countdown;
-
-  countdownTimer = setInterval(() => {
-    countdown--;
-    counter.textContent = countdown;
-
-    if (countdown <= 0) {
-      clearInterval(countdownTimer);
-      forceLogout();
-    }
-  }, 1000);
-}
-
-async function forceLogout() {
-  await supabase.auth.signOut();
-  window.location.href = "/login.html";
-}
-
-function stayLoggedIn() {
-  clearInterval(countdownTimer);
-  document.getElementById("idleModal").style.display = "none";
-  resetIdleTimer();
-}
-
-// Track user activity
-["mousemove", "keydown", "click", "scroll", "touchstart"].forEach(event =>
-  window.addEventListener(event, resetIdleTimer, { passive: true })
-);
-
-// Start tracking
-resetIdleTimer();
-function validatePassword(password) {
-  if (password.length < 8) {
-    return "Password must be at least 8 characters long.";
-  }
-
-  if (!/[^\w]/.test(password)) {
-    return "Password must include at least one special character.";
-  }
-
-  return null;
-}
-
-const error = validatePassword(password);
-if (error) {
-  alert(error);
-  return;
-}
-
